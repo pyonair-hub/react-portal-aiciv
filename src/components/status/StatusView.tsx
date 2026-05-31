@@ -36,8 +36,8 @@ export function StatusView() {
     try {
       const [s, b, a] = await Promise.allSettled([
         apiGet<StatusData>('/api/status'),
-        apiGet<BoopStatus>('/api/boop-status'),
-        apiGet<AuthStatus>('/api/claude-auth-status'),
+        apiGet<BoopStatus>('/api/boop/status'),
+        apiGet<AuthStatus>('/api/auth/status'),
       ])
       if (s.status === 'fulfilled') setStatus(s.value)
       if (b.status === 'fulfilled') setBoop(b.value)
