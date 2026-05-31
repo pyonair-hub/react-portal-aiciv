@@ -1,8 +1,27 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import './GuideView.css'
 
+/* ── On-brand grey SVG icons (matching sidebar style) ── */
+const S = { w: 22, h: 22, s: 'none', sw: 1.8, lc: 'round' as const, lj: 'round' as const }
+const gIcon = (...paths: string[]) => (
+  <svg width={S.w} height={S.h} viewBox="0 0 24 24" fill={S.s} stroke="currentColor" strokeWidth={S.sw} strokeLinecap={S.lc} strokeLinejoin={S.lj} className="guide-svg-icon">{paths.map((d,i)=><path key={i} d={d}/>)}</svg>
+)
+
+const GUIDE_ICONS: Record<string, ReactNode> = {
+  chat: gIcon('M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'),
+  teamchat: gIcon('M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8', 'M23 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75'),
+  mail: gIcon('M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z', 'M22 6l-10 7L2 6'),
+  liveview: gIcon('M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z', 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'),
+  calendar: gIcon('M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z', 'M16 2v4', 'M8 2v4', 'M3 10h18'),
+  bookmarks: gIcon('M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'),
+  memory: gIcon('M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', 'M12 8v8', 'M8 12h8'),
+  docs: gIcon('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M16 13H8', 'M16 17H8', 'M10 9H8'),
+  status: gIcon('M22 12h-4l-3 9L9 3l-3 9H2'),
+  settings: gIcon('M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'),
+}
+
 interface GuideItem {
-  icon: string
+  iconKey: string
   label: string
   desc: string
   details: string[]
@@ -20,7 +39,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: 'Communication',
     items: [
       {
-        icon: '\u{1F4AC}',
+        iconKey: 'chat',
         label: 'AI Chat',
         desc: 'Chat directly with your AI assistant. Ask questions, give tasks, have conversations.',
         route: '/chat',
@@ -35,7 +54,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
         tips: 'Be specific with your requests. Instead of "help me with marketing," try "draft a LinkedIn post about our new 3PL automation features."',
       },
       {
-        icon: '\u{1F4E2}',
+        iconKey: 'teamchat',
         label: 'Team AI Chat',
         desc: 'Collaborate with your full AI team in a shared chat room.',
         route: '/team-chat',
@@ -52,7 +71,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
         tips: 'Start by posting in AI Team — all your AIs will see it. For private conversations with one AI, create a new 1-on-1 room using the + button.',
       },
       {
-        icon: '\u{1F4E8}',
+        iconKey: 'mail',
         label: 'Agent Mail',
         desc: 'Your AI\'s email inbox. Send and receive emails on behalf of your business.',
         route: '/agent-mail',
@@ -72,7 +91,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: 'Workspace',
     items: [
       {
-        icon: '\u{1F465}',
+        iconKey: 'liveview',
         label: 'Live View',
         desc: 'See all active AI agents and what they\'re working on right now.',
         route: '/live',
@@ -87,7 +106,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
         tips: 'Check Live View when you want to know if your AI team is busy or available for a new task.',
       },
       {
-        icon: '\u{1F4C5}',
+        iconKey: 'calendar',
         label: 'AI Calendar',
         desc: 'Schedule tasks, set reminders, and manage your AI\'s calendar.',
         route: '/calendar',
@@ -102,7 +121,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
         tips: 'Set a daily morning briefing — your AI will send you a summary of what happened overnight and what is on deck for today.',
       },
       {
-        icon: '\u{1F4CC}',
+        iconKey: 'bookmarks',
         label: 'Bookmarks',
         desc: 'Save and organize important links and resources.',
         details: [
@@ -120,7 +139,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: 'Data & Intelligence',
     items: [
       {
-        icon: '\u{1F9E0}',
+        iconKey: 'memory',
         label: 'Memory',
         desc: 'What your AI knows and remembers about your business and preferences.',
         route: '/memory',
@@ -135,7 +154,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
         tips: 'Review your AI\'s memory periodically. If something is wrong or outdated, correct it — your AI will learn from the correction.',
       },
       {
-        icon: '\u{1F4D6}',
+        iconKey: 'docs',
         label: 'Documents',
         desc: 'Upload, view, and manage documents your AI can reference.',
         route: '/documents',
@@ -155,9 +174,9 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: 'System',
     items: [
       {
-        icon: '\u{1F9E0}',
-        label: 'Memory',
-        desc: 'View your AI\'s memory, system status, and connectivity.',
+        iconKey: 'status',
+        label: 'Status',
+        desc: 'View your AI\'s system status and connectivity.',
         route: '/status',
         details: [
           'Real-time system status — green means everything is running',
@@ -170,7 +189,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
         tips: 'If your AI seems slow or unresponsive, check Health first — it will tell you if there is a known issue.',
       },
       {
-        icon: '\u{2699}\u{FE0F}',
+        iconKey: 'settings',
         label: 'Settings',
         desc: 'Customize your portal experience, theme, and preferences.',
         route: '/settings',
@@ -211,7 +230,7 @@ export function GuideView() {
                 className={`guide-card ${expanded === item.label ? 'guide-card-expanded' : ''}`}
                 onClick={() => toggle(item.label)}
               >
-                <span className="guide-card-icon">{item.icon}</span>
+                <span className="guide-card-icon">{GUIDE_ICONS[item.iconKey]}</span>
                 <div className="guide-card-content">
                   <div className="guide-card-header">
                     <h3 className="guide-card-label">{item.label}</h3>

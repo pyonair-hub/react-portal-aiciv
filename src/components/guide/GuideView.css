@@ -67,10 +67,12 @@
 }
 
 .guide-card-icon {
-  font-size: 22px;
   flex-shrink: 0;
   width: 32px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
   padding-top: 2px;
 }
 

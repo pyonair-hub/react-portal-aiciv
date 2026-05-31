@@ -166,8 +166,52 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
     setText('')
   }
 
+  // Paste handler — images from clipboard
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        e.preventDefault()
+        const file = items[i].getAsFile()
+        if (file) onUpload(file)
+        return
+      }
+    }
+  }, [onUpload])
+
+  // Drag-and-drop handlers
+  const [dragOver, setDragOver] = useState(false)
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+    const files = e.dataTransfer?.files
+    if (files && files.length > 0) {
+      onUpload(files[0])
+    }
+  }, [onUpload])
+
   return (
-    <div className="chat-input-container">
+    <div
+      className={`chat-input-container ${dragOver ? 'chat-input-dragover' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {quickfirePills.length > 0 && (
         <div className="chat-pills">
           {quickfirePills.map((pill) => (
@@ -268,6 +312,7 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
                 onChange={e => setText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onInput={handleInput}
+                onPaste={handlePaste}
                 rows={1}
                 disabled={sending}
               />

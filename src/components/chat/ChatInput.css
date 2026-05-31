@@ -299,6 +299,27 @@
   white-space: nowrap;
 }
 
+/* Drag-and-drop overlay */
+.chat-input-dragover {
+  position: relative;
+}
+.chat-input-dragover::after {
+  content: 'Drop file here';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(230, 57, 70, 0.08);
+  border: 2px dashed #E63946;
+  border-radius: var(--radius-lg);
+  color: #E63946;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 10;
+  pointer-events: none;
+}
+
 @media (max-width: 768px) {
   .chat-input-container {
     padding: 8px 8px 12px;
