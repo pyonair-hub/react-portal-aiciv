@@ -12,7 +12,7 @@ import { SettingsView } from './components/settings/SettingsView'
 import { TerminalView } from './components/terminal/TerminalView'
 import { ConsoleView } from './components/console/ConsoleView'
 import { TeamsView } from './components/teams/TeamsView'
-const TeamChatView = () => <iframe src="https://forge-jordannah.ai-civ.com/team-chat" className="teamchat-iframe" />
+const TeamChatView = () => <iframe src={`${window.location.origin}/team-chat`} className="teamchat-iframe" />
 import { BookmarksView } from './components/bookmarks/BookmarksView'
 import { StatusView } from './components/status/StatusView'
 import { ContextView } from './components/context/ContextView'

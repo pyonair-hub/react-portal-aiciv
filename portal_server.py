@@ -67,6 +67,8 @@ _PROJECTS_DIR = Path.home() / ".claude" / "projects"
 LOG_ROOT = _PROJECTS_DIR  # fallback — _get_all_session_log_paths handles the real search
 HISTORY_FILE = Path.home() / ".claude" / "history.jsonl"
 PORTAL_CHAT_LOG = SCRIPT_DIR / "portal-chat.jsonl"
+TEAM_CHAT_LOG = SCRIPT_DIR / "team-chat.jsonl"
+TEAM_CHAT_CONVS = SCRIPT_DIR / "team-chat-conversations.json"
 UPLOADS_DIR = Path.home() / "portal_uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
 UPLOAD_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
@@ -525,6 +527,7 @@ _portal_log_ids: set = set()
 
 # Active WebSocket connections for pushing thinking blocks
 _chat_ws_clients: set = set()
+_team_chat_ws_clients: set = set()
 
 # Hashes of thinking blocks already sent — prevents duplicates across reconnects
 _sent_thinking_hashes: set = set()
@@ -7433,6 +7436,411 @@ async def ws_browser(websocket: WebSocket) -> None:
             pass
 
 
+# ---------------------------------------------------------------------------
+# ── Team Chat ──────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+
+async def serve_team_chat(request: Request) -> Response:
+    """GET /team-chat — Serve the team chat HTML page."""
+    path = SCRIPT_DIR / "team-chat.html"
+    if path.exists():
+        return FileResponse(str(path), media_type="text/html")
+    return Response("Team chat not found", status_code=404, media_type="text/plain")
+
+
+def _team_chat_append(sender: str, text: str, role: str = "ai") -> dict:
+    msg = {
+        "id": f"tc_{int(time.time() * 1000)}_{sender[:4]}",
+        "sender": sender, "role": role, "text": text, "ts": time.time(),
+    }
+    TEAM_CHAT_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with open(TEAM_CHAT_LOG, "a") as f:
+        f.write(json.dumps(msg) + "\n")
+    return msg
+
+
+def _team_chat_load(last_n: int = 100) -> list:
+    if not TEAM_CHAT_LOG.exists():
+        return []
+    lines = TEAM_CHAT_LOG.read_text().splitlines()
+    msgs = []
+    for line in lines[-last_n:]:
+        line = line.strip()
+        if line:
+            try:
+                msgs.append(json.loads(line))
+            except Exception:
+                pass
+    return msgs
+
+
+async def ws_team_chat(websocket: WebSocket) -> None:
+    """WebSocket — browser connects here to receive live team chat."""
+    token = websocket.query_params.get("token", "")
+    if token != BEARER_TOKEN:
+        await websocket.close(code=4401)
+        return
+    await websocket.accept()
+    _team_chat_ws_clients.add(websocket)
+    history = _team_chat_load(last_n=100)
+    for msg in history:
+        try:
+            await websocket.send_text(json.dumps(msg))
+        except Exception:
+            break
+    try:
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await websocket.send_text(json.dumps({"type": "ping"}))
+            except Exception:
+                break
+    except Exception:
+        pass
+    finally:
+        _team_chat_ws_clients.discard(websocket)
+
+
+async def api_team_chat_send(request: Request):
+    """POST — any AI agent posts a message to the team chat."""
+    if request.method == "OPTIONS":
+        return Response(status_code=200, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        })
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid json"}, status_code=400)
+    sender = body.get("sender", "unknown")
+    text = body.get("text", "").strip()
+    role = body.get("role", "ai")
+    if not text:
+        return JSONResponse({"error": "text required"}, status_code=400)
+    msg = _team_chat_append(sender, text, role)
+    dead = set()
+    for ws in list(_team_chat_ws_clients):
+        try:
+            await ws.send_text(json.dumps(msg))
+        except Exception:
+            dead.add(ws)
+    _team_chat_ws_clients.difference_update(dead)
+    return JSONResponse({"ok": True, "id": msg["id"]})
+
+
+async def api_team_chat_history(request: Request):
+    """GET — return recent team chat history."""
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    msgs = _team_chat_load(last_n=200)
+    return JSONResponse({"messages": msgs})
+
+
+async def api_team_chat_upload(request: Request):
+    """POST — upload a file to team chat."""
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    form = await request.form()
+    file = form.get("file")
+    sender = form.get("sender", "unknown")
+    if not file:
+        return JSONResponse({"error": "no file"}, status_code=400)
+    upload_dir = UPLOADS_DIR / "team-chat"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    fname = f"{int(time.time() * 1000)}_{file.filename}"
+    fpath = upload_dir / fname
+    content = await file.read()
+    fpath.write_bytes(content)
+    url = f"/api/chat/uploads/team-chat/{fname}"
+    msg = _team_chat_append(sender, f"[file: {file.filename}]({url})", "ai")
+    dead = set()
+    for ws in list(_team_chat_ws_clients):
+        try:
+            await ws.send_text(json.dumps(msg))
+        except Exception:
+            dead.add(ws)
+    _team_chat_ws_clients.difference_update(dead)
+    return JSONResponse({"ok": True, "url": url})
+
+
+# -- Team Chat: Conversation storage --
+
+_DEFAULT_CONVS = [
+    {"id": "ai-team", "name": "AI Team", "type": "group",
+     "participants": ["Pyonair AI", "Clarity", "Between", "Catalyst", "Jord"],
+     "isDefault": True, "lastActivity": int(time.time()), "icon": "group"},
+    {"id": "general", "name": "General", "type": "group",
+     "participants": ["Pyonair AI", "Clarity", "Between", "Catalyst", "Jord", "Ronen"],
+     "isDefault": True, "lastActivity": int(time.time()), "icon": "group"},
+]
+
+
+def _load_conversations() -> list:
+    if TEAM_CHAT_CONVS.exists():
+        try:
+            convs = json.loads(TEAM_CHAT_CONVS.read_text())
+            ids = {c["id"] for c in convs}
+            for dc in _DEFAULT_CONVS:
+                if dc["id"] not in ids:
+                    convs.insert(0, {**dc})
+            return convs
+        except Exception:
+            pass
+    return [dict(c) for c in _DEFAULT_CONVS]
+
+
+def _save_conversations(convs: list) -> None:
+    TEAM_CHAT_CONVS.parent.mkdir(parents=True, exist_ok=True)
+    TEAM_CHAT_CONVS.write_text(json.dumps(convs, indent=2))
+
+
+def _get_conv_messages(conv_id: str, last_n: int = 100) -> list:
+    log_path = SCRIPT_DIR / f"team-chat-{conv_id}.jsonl"
+    if not log_path.exists():
+        return []
+    lines = log_path.read_text().splitlines()
+    msgs = []
+    for line in lines[-last_n:]:
+        line = line.strip()
+        if line:
+            try:
+                msgs.append(json.loads(line))
+            except Exception:
+                pass
+    return msgs
+
+
+async def api_team_chat_conversations(request: Request):
+    """GET — return all conversations."""
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    return JSONResponse({"conversations": _load_conversations()})
+
+
+async def api_team_chat_conversations_create(request: Request):
+    """POST — create a new conversation."""
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid json"}, status_code=400)
+    name = body.get("name", "").strip()
+    participants = body.get("participants", [])
+    conv_type = body.get("type", "group")
+    if not name:
+        return JSONResponse({"error": "name required"}, status_code=400)
+    conv_id = f"conv-{int(time.time() * 1000)}"
+    conv = {
+        "id": conv_id, "name": name, "type": conv_type,
+        "participants": participants, "isDefault": False,
+        "lastActivity": int(time.time()), "icon": conv_type,
+    }
+    convs = _load_conversations()
+    convs.append(conv)
+    _save_conversations(convs)
+    return JSONResponse({"ok": True, "conversation": conv})
+
+
+async def api_team_chat_conv_add_participant(request: Request):
+    """POST — add a participant to a conversation."""
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid json"}, status_code=400)
+    conv_id = request.path_params["conv_id"]
+    name = body.get("name", "").strip()
+    if not name:
+        return JSONResponse({"error": "name required"}, status_code=400)
+    convs = _load_conversations()
+    conv = next((c for c in convs if c["id"] == conv_id), None)
+    if not conv:
+        return JSONResponse({"error": "conversation not found"}, status_code=404)
+    if name.lower() not in [p.lower() for p in conv["participants"]]:
+        conv["participants"].append(name)
+        _save_conversations(convs)
+    return JSONResponse({"ok": True, "participants": conv["participants"]})
+
+
+async def api_team_chat_conv_remove_participant(request: Request):
+    """DELETE — remove a participant from a conversation."""
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    conv_id = request.path_params["conv_id"]
+    name = request.path_params["name"]
+    convs = _load_conversations()
+    conv = next((c for c in convs if c["id"] == conv_id), None)
+    if not conv:
+        return JSONResponse({"error": "conversation not found"}, status_code=404)
+    conv["participants"] = [p for p in conv["participants"] if p.lower() != name.lower()]
+    _save_conversations(convs)
+    return JSONResponse({"ok": True, "participants": conv["participants"]})
+
+
+async def api_team_chat_conv_delete(request: Request):
+    """DELETE — delete a non-default conversation."""
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    conv_id = request.path_params["conv_id"]
+    convs = _load_conversations()
+    conv = next((c for c in convs if c["id"] == conv_id), None)
+    if not conv:
+        return JSONResponse({"error": "conversation not found"}, status_code=404)
+    if conv.get("isDefault"):
+        return JSONResponse({"error": "cannot delete default conversation"}, status_code=400)
+    convs = [c for c in convs if c["id"] != conv_id]
+    _save_conversations(convs)
+    # Remove conversation log file
+    log_path = SCRIPT_DIR / f"team-chat-{conv_id}.jsonl"
+    if log_path.exists():
+        log_path.unlink()
+    return JSONResponse({"ok": True})
+
+
+async def api_team_chat_conv_send(request: Request):
+    """POST — send a message to a specific conversation."""
+    if request.method == "OPTIONS":
+        return Response(status_code=200, headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        })
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    conv_id = request.path_params["conv_id"]
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid json"}, status_code=400)
+    sender = body.get("sender", "unknown")
+    text = body.get("text", "").strip()
+    role = body.get("role", "ai")
+    if not text:
+        return JSONResponse({"error": "text required"}, status_code=400)
+    msg = {
+        "id": f"tc_{int(time.time() * 1000)}_{sender[:4]}",
+        "conv_id": conv_id, "sender": sender, "role": role, "text": text, "ts": time.time(),
+    }
+    log_path = SCRIPT_DIR / f"team-chat-{conv_id}.jsonl"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(log_path, "a") as f:
+        f.write(json.dumps(msg) + "\n")
+    if conv_id == "ai-team":
+        _team_chat_append(sender, text, role)
+    dead = set()
+    for ws in list(_team_chat_ws_clients):
+        try:
+            await ws.send_text(json.dumps(msg))
+        except Exception:
+            dead.add(ws)
+    _team_chat_ws_clients.difference_update(dead)
+    convs = _load_conversations()
+    conv = next((c for c in convs if c["id"] == conv_id), None)
+    if conv:
+        conv["lastActivity"] = int(time.time())
+        _save_conversations(convs)
+    return JSONResponse({"ok": True, "id": msg["id"]})
+
+
+async def api_team_chat_conv_history(request: Request):
+    """GET — return messages for a specific conversation."""
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    conv_id = request.path_params["conv_id"]
+    if conv_id == "ai-team":
+        msgs = _team_chat_load(last_n=200)
+    else:
+        msgs = _get_conv_messages(conv_id, last_n=200)
+    return JSONResponse({"messages": msgs})
+
+
+# ── Deepgram token endpoint (for team-chat browser voice) ─────────────
+
+async def api_deepgram_token(request: Request) -> JSONResponse:
+    """Return Deepgram API key for browser-side WebSocket voice input."""
+    dg_key = os.environ.get("DEEPGRAM_API_KEY", "")
+    if not dg_key:
+        return JSONResponse({"error": "DEEPGRAM_API_KEY not configured"}, status_code=500)
+    return JSONResponse({"key": dg_key}, headers={"Cache-Control": "no-store"})
+
+
+# ── Branding endpoint ──────────────────────────────────────────────────
+
+async def api_branding(request: Request) -> JSONResponse:
+    """Return portal branding config (logo, name, colors)."""
+    return JSONResponse({
+        "logo": "/pyonair-logo.svg",
+        "logo_dark": "/pyonair-logo-white.svg",
+        "name": "Pyonair",
+        "accent": "#E63946",
+    })
+
+
+# ── Voice transcription via Deepgram ──────────────────────────────────
+
+async def api_voice_transcribe(request: Request) -> JSONResponse:
+    """Transcribe audio via Deepgram Nova-2. Accepts raw audio body."""
+    if not check_auth(request):
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+
+    dg_key = os.environ.get("DEEPGRAM_API_KEY", "")
+    if not dg_key:
+        return JSONResponse({"error": "DEEPGRAM_API_KEY not configured"}, status_code=500)
+
+    content_type = request.headers.get("content-type", "audio/webm")
+    body = await request.body()
+    if not body or len(body) < 100:
+        return JSONResponse({"error": "No audio data received"}, status_code=400)
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=en",
+                headers={
+                    "Authorization": f"Token {dg_key}",
+                    "Content-Type": content_type,
+                },
+                content=body,
+            )
+            if resp.status_code != 200:
+                return JSONResponse({"error": f"Deepgram error: {resp.status_code}"}, status_code=502)
+            data = resp.json()
+            transcript = (
+                data.get("results", {})
+                .get("channels", [{}])[0]
+                .get("alternatives", [{}])[0]
+                .get("transcript", "")
+            )
+            return JSONResponse({"transcript": transcript, "ok": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ── SPA catch-all (serves React index.html for client-side routing) ───
+
+async def spa_catchall(request: Request) -> Response:
+    """Serve React index.html for any unmatched path (SPA client-side routing).
+    Also serves root-level static files from dist/ (logos, icons, sw.js, etc.)."""
+    path = request.path_params.get("path", "")
+    # Try serving a static file from dist/ first (logos, manifest, etc.)
+    if path and not path.startswith("api/"):
+        candidate = REACT_DIST / path
+        if candidate.is_file():
+            import mimetypes
+            mt = mimetypes.guess_type(str(candidate))[0] or "application/octet-stream"
+            return FileResponse(str(candidate), media_type=mt)
+    # Fall back to index.html for React Router
+    react_index = REACT_DIST / "index.html"
+    if react_index.exists():
+        return FileResponse(str(react_index), media_type="text/html")
+    return Response("<h1>Not found</h1>", status_code=404, media_type="text/html")
+
+
 # App
 # ---------------------------------------------------------------------------
 _react_assets_mount = (
@@ -7575,9 +7983,27 @@ routes = [
     Route("/api/hub/threads/{thread_id}/posts", endpoint=api_hub_create_post, methods=["POST"]),
     Route("/api/hub/posts/{post_id}/replies", endpoint=api_hub_reply_to_post, methods=["POST"]),
     Route("/api/browser/{action}", endpoint=api_browser_proxy, methods=["GET", "POST"]),
+    Route("/api/branding", endpoint=api_branding),
+    Route("/api/deepgram-token", endpoint=api_deepgram_token),
+    Route("/api/voice/transcribe", endpoint=api_voice_transcribe, methods=["POST"]),
+    # Team Chat
+    Route("/team-chat", endpoint=serve_team_chat),
+    Route("/api/team-chat/send", endpoint=api_team_chat_send, methods=["POST", "OPTIONS"]),
+    Route("/api/team-chat/history", endpoint=api_team_chat_history),
+    Route("/api/team-chat/upload", endpoint=api_team_chat_upload, methods=["POST"]),
+    Route("/api/team-chat/conversations", endpoint=api_team_chat_conversations),
+    Route("/api/team-chat/conversations", endpoint=api_team_chat_conversations_create, methods=["POST"]),
+    Route("/api/team-chat/conversations/{conv_id}", endpoint=api_team_chat_conv_delete, methods=["DELETE"]),
+    Route("/api/team-chat/conversations/{conv_id}/send", endpoint=api_team_chat_conv_send, methods=["POST", "OPTIONS"]),
+    Route("/api/team-chat/conversations/{conv_id}/history", endpoint=api_team_chat_conv_history, methods=["GET"]),
+    Route("/api/team-chat/conversations/{conv_id}/participants/{name}", endpoint=api_team_chat_conv_remove_participant, methods=["DELETE"]),
+    Route("/api/team-chat/conversations/{conv_id}/participants", endpoint=api_team_chat_conv_add_participant, methods=["POST"]),
     WebSocketRoute("/ws/chat", endpoint=ws_chat),
     WebSocketRoute("/ws/terminal", endpoint=ws_terminal),
     WebSocketRoute("/ws/browser", endpoint=ws_browser),
+    WebSocketRoute("/ws/team-chat", endpoint=ws_team_chat),
+    # SPA catch-all — MUST be last (serves React index.html for client-side routes)
+    Route("/{path:path}", endpoint=spa_catchall),
 ]
 
 app = Starlette(

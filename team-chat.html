@@ -1,0 +1,2662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pyonair - Team Chat</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Inter,sans-serif' font-weight='800' fill='%23E63946'>P</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --red: #E63946;
+      --red-hover: #C62828;
+      --sidebar-bg: #FFFFFF;
+      --sidebar-hover: #FFF0F1;
+      --sidebar-active: #FFE0E3;
+      --sidebar-text: #64748B;
+      --sidebar-text-bright: #1D1D1F;
+      --sidebar-border: #F0F0F0;
+      --main-bg: #F8F9FA;
+      --white: #FFFFFF;
+      --border: #E5E5EA;
+      --text: #1D1D1F;
+      --text-muted: #64748B;
+      --text-faint: #9CA3AF;
+      --green: #4ADE80;
+      --blue: #3B82F6;
+      --purple: #8B5CF6;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--main-bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* - Lobby screen - */
+    .lobby-overlay {
+      position: fixed; inset: 0;
+      background: #F8F9FA;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .lobby-overlay.hidden { display: none; }
+    .lobby-card {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 48px 40px;
+      text-align: center;
+      max-width: 440px;
+      width: 90%;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+    }
+    .lobby-card .lobby-logo {
+      width: 56px; height: 56px;
+      background: var(--red);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 26px;
+      font-weight: 700;
+      color: white;
+    }
+    .lobby-card h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .lobby-card .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    .lobby-options {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+    .lobby-btn {
+      flex: 1;
+      padding: 24px 16px;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      background: var(--white);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .lobby-btn:hover {
+      border-color: var(--red);
+      background: #FEF2F2;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(230,57,70,0.12);
+    }
+    .lobby-btn .lobby-icon {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+    }
+    .lobby-btn .lobby-label {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      display: block;
+    }
+    .lobby-btn .lobby-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: block;
+    }
+
+    /* - App layout - */
+    .app {
+      display: none;
+      height: 100vh;
+      flex-direction: row;
+    }
+    .app.active { display: flex; }
+
+    /* - Sidebar - */
+    .sidebar {
+      width: 280px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border, #F0F0F0);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      transition: transform 0.25s ease;
+    }
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--sidebar-border, #F0F0F0);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sidebar-header .logo {
+      width: 32px; height: 32px;
+      background: var(--red);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+    .sidebar-header h2 {
+      color: var(--red);
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .sidebar-header .user-role {
+      font-size: 12px;
+      color: var(--sidebar-text);
+      margin-top: 1px;
+    }
+    .sidebar-section-label {
+      padding: 16px 16px 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--sidebar-text);
+    }
+    .conv-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 8px;
+    }
+    .conv-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--sidebar-text);
+      font-size: 13px;
+      transition: background 0.15s;
+      position: relative;
+    }
+    .conv-item:hover { background: var(--sidebar-hover); color: var(--sidebar-text-bright); }
+    .conv-item.active { background: var(--sidebar-active); color: var(--text); }
+    .conv-item .conv-avatar {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+    .conv-avatar-group { background: linear-gradient(135deg, var(--red), #FF6B6B); }
+    .conv-avatar-direct { background: linear-gradient(135deg, var(--blue), #60A5FA); }
+    .conv-avatar-ai-team { background: linear-gradient(135deg, var(--red), var(--purple)); }
+    .conv-item .conv-info { flex: 1; min-width: 0; }
+    .conv-item .conv-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .conv-item.active .conv-name { color: var(--text); }
+    .conv-item .conv-preview {
+      font-size: 12px;
+      color: var(--sidebar-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .conv-item .conv-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .conv-item .conv-badge {
+      background: var(--red);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 5px;
+    }
+    .conv-item .conv-badge.hidden { display: none; }
+    .conv-item .conv-type {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--sidebar-text);
+      background: rgba(0,0,0,0.04);
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+    .new-conv-btn {
+      margin: 8px;
+      padding: 10px;
+      border: 1px dashed rgba(0,0,0,0.12);
+      border-radius: 8px;
+      background: none;
+      color: var(--sidebar-text);
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: center;
+      transition: all 0.15s;
+      font-weight: 500;
+    }
+    .new-conv-btn:hover {
+      border-color: var(--red);
+      color: var(--red);
+      background: rgba(230,57,70,0.08);
+    }
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--sidebar-border, #F0F0F0);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sidebar-footer .user-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+    .sidebar-footer .user-info {
+      flex: 1;
+      overflow: hidden;
+    }
+    .sidebar-footer .user-name {
+      color: var(--sidebar-text-bright);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .sidebar-footer .user-status {
+      color: var(--green);
+      font-size: 12px;
+    }
+
+    /* - Main area - */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .main-header {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      color: var(--text);
+    }
+    .hamburger svg { display: block; }
+    .main-header .conv-title-area { flex: 1; min-width: 0; }
+    .main-header .conv-title-name {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .main-header .conv-title-name .type-badge {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #F1F5F9;
+      color: var(--text-muted);
+    }
+    .main-header .header-participants {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      cursor: pointer;
+    }
+    .main-header .header-participants:hover .manage-label { text-decoration: underline; }
+    .header-mini-avatar {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+      border: 2px solid var(--white);
+      margin-left: -6px;
+    }
+    .header-mini-avatar:first-child { margin-left: 0; }
+    .manage-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-left: 6px;
+    }
+    .main-header .channel-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .main-header .member-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .main-header .ws-status {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .ws-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #EF4444;
+      display: inline-block;
+    }
+    .ws-dot.connected { background: var(--green); }
+    .manage-btn {
+      background: #F1F5F9;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .manage-btn:hover { background: #E2E8F0; color: var(--text); }
+
+    /* - Participants bar (for AI Team conversation) - */
+    .participants {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 20px;
+      display: none;
+      gap: 16px;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .participants.visible { display: flex; }
+    .participant { display: flex; align-items: center; gap: 6px; }
+    .participant .avatar {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+    }
+    .avatar-pyonair { background: var(--red); }
+    .avatar-clarity { background: #3B82F6; }
+    .avatar-catalyst { background: #F59E0B; }
+    .avatar-between { background: #8B5CF6; }
+    .avatar-jord { background: var(--sidebar-bg); }
+    .avatar-ronen { background: #059669; }
+    .avatar-system { background: #6B7280; }
+    .avatar-human { background: var(--sidebar-bg); }
+    .avatar-ai { background: var(--red); }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #D1D5DB;
+      display: inline-block;
+      margin-left: 2px;
+    }
+    .status-dot.online { background: var(--green); }
+
+    /* - Pinned section - */
+    .pinned-section {
+      background: #FEF3C7;
+      border-bottom: 1px solid #F59E0B;
+      padding: 8px 16px;
+      max-height: 150px;
+      overflow-y: auto;
+      display: none;
+      flex-shrink: 0;
+    }
+    .pinned-section.has-pins { display: block; }
+    .pinned-section h3 {
+      font-size: 12px;
+      color: #92400E;
+      margin: 0 0 6px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+    .pinned-msg {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 4px 0;
+      font-size: 13px;
+      border-bottom: 1px solid #FDE68A;
+      cursor: pointer;
+    }
+    .pinned-msg:last-child { border-bottom: none; }
+    .pinned-msg:hover { background: rgba(245,158,11,0.1); }
+    .pinned-msg .pin-avatar {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+    .pinned-msg .pin-text {
+      flex: 1;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .pinned-msg .pin-sender { font-weight: 600; color: #92400E; margin-right: 4px; }
+    .pinned-msg .unpin-btn {
+      background: none;
+      border: none;
+      color: #92400E;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 4px;
+      flex-shrink: 0;
+      opacity: 0.6;
+    }
+    .pinned-msg .unpin-btn:hover { opacity: 1; }
+
+    /* - Messages - */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overscroll-behavior: contain;
+    }
+    .message {
+      display: flex;
+      gap: 10px;
+      max-width: 85%;
+      position: relative;
+    }
+    .message.self { align-self: flex-end; flex-direction: row-reverse; }
+    .message .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+    .message .bubble {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      max-width: 100%;
+    }
+    .message.self .bubble {
+      background: var(--red);
+      color: white;
+      border-color: var(--red);
+    }
+    .message .sender-name { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+    .message .text { font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+    .message .time { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
+    .message.self .time { color: rgba(255,255,255,0.7); }
+    .message.system { align-self: center; max-width: 100%; }
+    .message.system .bubble {
+      background: #F1F5F9;
+      border: none;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* Message actions */
+    .msg-actions {
+      display: none;
+      position: absolute;
+      top: -32px;
+      right: 8px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      padding: 4px;
+      gap: 2px;
+      z-index: 20;
+      flex-direction: row;
+    }
+    .message:hover .msg-actions,
+    .message.actions-open .msg-actions { display: flex; }
+    .msg-actions button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      color: var(--text-muted);
+      transition: background 0.15s;
+      line-height: 1;
+    }
+    .msg-actions button:hover { background: #F1F5F9; }
+    .msg-pin-btn {
+      opacity: 0;
+      transition: opacity 0.2s;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 4px;
+      position: absolute;
+      top: 4px;
+      right: 4px;
+    }
+    .message:hover .msg-pin-btn { opacity: 1; }
+    .msg-pin-btn.pinned { opacity: 0.7; }
+    .message:hover .msg-pin-btn.pinned { opacity: 1; }
+
+    /* Reply quote */
+    .reply-quote {
+      background: rgba(0,0,0,0.06);
+      border-left: 3px solid var(--red);
+      border-radius: 4px;
+      padding: 4px 8px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      line-height: 1.3;
+      max-height: 48px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .reply-quote .reply-quote-sender { font-weight: 600; font-size: 12px; color: var(--red); margin-bottom: 1px; }
+    .reply-quote .reply-quote-text { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .message.self .reply-quote { background: rgba(255,255,255,0.15); border-left-color: rgba(255,255,255,0.6); }
+    .message.self .reply-quote .reply-quote-sender { color: rgba(255,255,255,0.9); }
+    .message.self .reply-quote .reply-quote-text { color: rgba(255,255,255,0.7); }
+
+    /* Reply bar */
+    .reply-bar {
+      display: none;
+      background: #FEF3C7;
+      border-top: 1px solid var(--border);
+      padding: 8px 20px;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .reply-bar.active { display: flex; }
+    .reply-bar-content { flex: 1; overflow: hidden; }
+    .reply-bar-sender { font-weight: 600; font-size: 12px; color: var(--red); }
+    .reply-bar-text { color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+    .reply-bar-close {
+      background: none; border: none; color: var(--text-faint); font-size: 18px;
+      cursor: pointer; padding: 4px; border-radius: 50%; width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .reply-bar-close:hover { background: rgba(0,0,0,0.1); color: var(--red); }
+
+    /* - Input - */
+    .input-bar-wrapper { position: relative; flex-shrink: 0; }
+    .voice-preview {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      font-size: 13px; color: var(--text); padding: 0 20px;
+      background: #FEF3C7; display: none; align-items: center; gap: 8px; z-index: 10;
+    }
+    .voice-preview.active { display: flex; }
+    .voice-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--red); flex-shrink: 0;
+      animation: dotPulse 1.5s ease infinite;
+    }
+    @keyframes dotPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+    .voice-preview .voice-text { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+    .voice-preview .voice-cancel-btn {
+      background:none; border:none; color:var(--text-faint); font-size:18px; line-height:1;
+      cursor:pointer; padding:4px; flex-shrink:0; border-radius:50%; width:28px; height:28px;
+      display:flex; align-items:center; justify-content:center; transition:background .15s,color .15s;
+    }
+    .voice-preview .voice-cancel-btn:hover { background:rgba(0,0,0,.1); color:var(--red); }
+    .voice-preview .voice-send-btn {
+      background:var(--red); color:white; border:none; border-radius:980px;
+      padding:6px 18px; font-family:'Inter',sans-serif; font-size:14px; font-weight:600;
+      cursor:pointer; flex-shrink:0; transition:background .15s;
+    }
+    .voice-preview .voice-send-btn:hover { background:#FF6B6B; }
+    .input-bar {
+      background: var(--white);
+      border-top: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .input-bar input[type="text"] {
+      flex: 1; border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; font-size: 14px; font-family: inherit; outline: none;
+    }
+    .input-bar input[type="text"]:focus { border-color: var(--red); }
+    .input-bar .send-btn {
+      background: var(--red); color: white; border: none; border-radius: 8px;
+      padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .input-bar .send-btn:hover { background: var(--red-hover); }
+    .input-bar .send-btn:disabled { background: #D1D5DB; cursor: not-allowed; }
+    .input-bar .mic-btn {
+      width: 42px; height: 42px; border-radius: 8px;
+      border: 1px solid var(--border) !important;
+      background: var(--main-bg) !important;
+      padding: 0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.2s; color: var(--red);
+    }
+    .input-bar .mic-btn:hover { background: #FEE2E2 !important; border-color: var(--red) !important; }
+    .input-bar .mic-btn.recording {
+      background: var(--red) !important; border-color: var(--red) !important;
+      animation: pulse 1.5s ease infinite;
+    }
+    .input-bar .mic-btn.recording svg { stroke: white; }
+    .input-bar .attach-btn {
+      width: 42px; height: 42px; border-radius: 8px;
+      border: 1px solid var(--border) !important;
+      background: var(--main-bg) !important;
+      padding: 0; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.2s;
+    }
+    .input-bar .attach-btn:hover { background: #E2E8F0 !important; border-color: #94A3B8 !important; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(230,57,70,.4)} 50%{box-shadow:0 0 0 8px rgba(230,57,70,0)} }
+
+    /* - Typing indicator - */
+    .typing { font-size: 12px; color: var(--text-faint); padding: 0 20px 4px; min-height: 20px; }
+
+    /* - Empty state - */
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--text-faint); gap: 8px;
+    }
+    .empty-state .icon { font-size: 48px; }
+    .empty-state p { font-size: 14px; }
+
+    /* - Modals - */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 500;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-card {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 28px;
+      max-width: 480px;
+      width: 92%;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .modal-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+    .modal-card label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .modal-card input[type="text"] {
+      width: 100%; border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; font-size: 14px; font-family: inherit; outline: none; margin-bottom: 16px;
+    }
+    .modal-card input[type="text"]:focus { border-color: var(--red); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .modal-actions button {
+      padding: 8px 20px; border-radius: 8px; font-size: 14px;
+      font-weight: 600; cursor: pointer; font-family: inherit; border: none;
+    }
+    .modal-actions .cancel-btn { background: #F1F5F9; color: var(--text-muted); }
+    .modal-actions .cancel-btn:hover { background: #E2E8F0; }
+    .modal-actions .create-btn { background: var(--red); color: white; }
+    .modal-actions .create-btn:hover { background: var(--red-hover); }
+    .modal-actions .create-btn:disabled { background: #D1D5DB; cursor: not-allowed; }
+
+    /* Participant checklist in modal */
+    .participant-checklist {
+      margin-bottom: 12px;
+    }
+    .participant-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .participant-check:hover { background: #F8FAFC; }
+    .participant-check input[type="checkbox"] {
+      width: 18px; height: 18px;
+      accent-color: var(--red);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .participant-check .pc-avatar {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+    .participant-check .pc-info { flex: 1; }
+    .participant-check .pc-name { font-size: 14px; font-weight: 500; }
+    .participant-check .pc-type {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 1px 6px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+    .pc-type-human { background: #DBEAFE; color: #1E40AF; }
+    .pc-type-ai { background: #FEE2E2; color: #991B1B; }
+    .add-custom-row {
+      display: flex; gap: 8px; margin-top: 8px; align-items: center;
+    }
+    .add-custom-row input {
+      flex: 1; border: 1px solid var(--border); border-radius: 6px;
+      padding: 7px 10px; font-size: 13px; font-family: inherit; outline: none;
+    }
+    .add-custom-row input:focus { border-color: var(--red); }
+    .add-custom-row button {
+      background: var(--red); color: white; border: none; border-radius: 6px;
+      padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: inherit; white-space: nowrap;
+    }
+    .add-custom-row button:hover { background: var(--red-hover); }
+
+    /* - Participant management panel - */
+    .manage-panel-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 400;
+      display: none;
+    }
+    .manage-panel-overlay.visible { display: block; }
+    .manage-panel {
+      position: fixed; top: 0; right: -380px; bottom: 0;
+      width: 360px; max-width: 90vw;
+      background: var(--white);
+      box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+      z-index: 401;
+      transition: right 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .manage-panel.open { right: 0; }
+    .manage-panel-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .manage-panel-header h3 { flex: 1; font-size: 16px; font-weight: 700; }
+    .manage-panel-close {
+      background: none; border: none; font-size: 20px; cursor: pointer;
+      color: var(--text-muted); padding: 4px; border-radius: 50%;
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .manage-panel-close:hover { background: #F1F5F9; color: var(--text); }
+    .manage-panel-body {
+      flex: 1; overflow-y: auto; padding: 16px 20px;
+    }
+    .manage-participant {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .manage-participant:last-child { border-bottom: none; }
+    .manage-participant .mp-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+    .manage-participant .mp-info { flex: 1; }
+    .manage-participant .mp-name { font-size: 14px; font-weight: 500; }
+    .manage-participant .mp-type {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 1px 6px;
+      border-radius: 3px;
+      display: inline-block;
+      margin-top: 2px;
+    }
+    .manage-participant .mp-status {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #D1D5DB;
+      flex-shrink: 0;
+    }
+    .manage-participant .mp-status.online { background: var(--green); }
+    .manage-participant .mp-remove {
+      background: none; border: none; color: var(--text-faint);
+      font-size: 18px; cursor: pointer; padding: 4px;
+      border-radius: 50%; width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .manage-participant .mp-remove:hover { background: #FEE2E2; color: var(--red); }
+    .manage-panel-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+    .manage-add-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--red);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .manage-add-btn:hover { background: var(--red-hover); }
+
+    /* - Toast - */
+    #toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: var(--sidebar-bg); color: white; padding: 8px 20px;
+      border-radius: 980px; font-size: 13px; z-index: 999;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    }
+    #toast.toast-error {
+      background: var(--red); color: white;
+    }
+
+    /* - Mobile sidebar overlay - */
+    .sidebar-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 99;
+    }
+    .sidebar-overlay.visible { display: block; }
+
+    /* - Mobile - */
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed; left: 0; top: 0; bottom: 0;
+        z-index: 100;
+        transform: translateX(-100%);
+        width: 300px;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .hamburger { display: block; }
+      .main-header { padding: 10px 14px; }
+      .main-header .conv-title-name { font-size: 14px; }
+      .header-mini-avatar { width: 18px; height: 18px; font-size: 12px; }
+      .manage-label { display: none; }
+      .participants { padding: 6px 14px; gap: 10px; overflow-x: auto; flex-wrap: nowrap; max-width: 100vw; }
+      .participant .avatar { width: 20px; height: 20px; font-size: 12px; }
+      .participant span { font-size: 12px; }
+      .messages { padding: 8px 10px; gap: 4px; }
+      .message { gap: 6px; max-width: 95%; }
+      .message .avatar { width: 24px; height: 24px; font-size: 12px; }
+      .message .bubble { padding: 6px 10px; border-radius: 10px; }
+      .message .sender-name { font-size: 12px; margin-bottom: 1px; }
+      .message .text { font-size: 12px; line-height: 1.3; }
+      .message .time { font-size: 12px; margin-top: 2px; }
+      .typing { font-size: 12px; padding: 0 12px 2px; min-height: 16px; }
+      .input-bar { padding: 8px 10px; gap: 6px; }
+      .input-bar input[type="text"] { padding: 8px 10px; font-size: 13px; }
+      .input-bar .send-btn { padding: 8px 14px; font-size: 13px; }
+      .input-bar .mic-btn { width: 44px; height: 44px; }
+      .input-bar .attach-btn { width: 44px; height: 44px; }
+      .input-bar .send-btn { min-height: 44px; }
+      .msg-actions { top: -32px; right: 4px; }
+      .msg-actions button { font-size: 14px; padding: 6px 10px; min-height: 44px; min-width: 44px; }
+      .pinned-section { padding: 6px 12px; max-height: 100px; }
+      .pinned-msg { font-size: 12px; gap: 6px; padding: 3px 0; }
+      .pinned-msg .pin-avatar { width: 16px; height: 16px; font-size: 12px; }
+      .manage-panel { width: 100vw; max-width: 100vw; overflow-x: hidden; }
+      .manage-panel .manage-close { min-width: 44px; min-height: 44px; }
+      .manage-btn { min-height: 44px; }
+      .conv-item { padding: 8px; }
+      .conv-item .conv-avatar { width: 32px; height: 32px; font-size: 13px; }
+    }
+
+    /* Embed mode */
+    body.embedded .sidebar { display: none; }
+    body.embedded .hamburger { display: none; }
+    body.embedded .main-header { padding: 6px 12px; }
+    body.embedded .messages { padding: 10px 12px; }
+    body.embedded .input-bar { padding: 8px 12px; }
+  </style>
+</head>
+<body>
+
+<!-- Lobby -->
+<div class="lobby-overlay" id="lobbyOverlay">
+  <div class="lobby-card">
+    <div class="lobby-logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="48" height="48"><circle cx="16" cy="16" r="12" fill="#E63946"/></svg></div>
+    <h1>Pyonair Team Chat</h1>
+    <p class="subtitle">Welcome back</p>
+    <div class="lobby-options">
+      <button class="lobby-btn" onclick="enterChat('human')">
+        <span class="lobby-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E63946" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+        <span class="lobby-label">I'm a Human</span>
+        <span class="lobby-desc">Join as yourself</span>
+      </button>
+      <button class="lobby-btn" onclick="enterChat('ai')">
+        <span class="lobby-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#E63946" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M12 2a4 4 0 0 0-4 4v5h8V6a4 4 0 0 0-4-4z"/><circle cx="9" cy="16" r="1" fill="#E63946"/><circle cx="15" cy="16" r="1" fill="#E63946"/></svg></span>
+        <span class="lobby-label">I'm an AI</span>
+        <span class="lobby-desc">Join as an AI team member</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- New Conversation Modal -->
+<div class="modal-overlay hidden" id="newConvModal" onclick="if(event.target===this)closeNewConvModal()">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">New Conversation</h3>
+      <button onclick="closeNewConvModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#64748B;padding:0 4px">&times;</button>
+    </div>
+    <label>Conversation Name</label>
+    <input type="text" id="newConvName" placeholder="e.g. Sales Strategy, Onboarding" autocomplete="off" maxlength="50">
+    <label>Participants</label>
+    <div class="participant-checklist" id="participantChecklist"></div>
+    <div class="add-custom-row">
+      <input type="text" id="customParticipantName" placeholder="Type name to invite (human or AI)..." maxlength="30">
+      <button onclick="addCustomParticipant()">Add</button>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel-btn" onclick="closeNewConvModal()">Cancel</button>
+      <button class="create-btn" id="createConvBtn" onclick="createConversation()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Participant Modal (for manage panel) -->
+<div class="modal-overlay hidden" id="addParticipantModal" onclick="if(event.target===this)closeAddParticipantModal()">
+  <div class="modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">Add Participant</h3>
+      <button onclick="closeAddParticipantModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#64748B;padding:0 4px">&times;</button>
+    </div>
+    <div class="participant-checklist" id="addParticipantChecklist"></div>
+    <div class="add-custom-row">
+      <input type="text" id="addCustomName" placeholder="Type name to invite (human or AI)..." maxlength="30">
+      <button onclick="addCustomToConversation()">Add</button>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel-btn" onclick="closeAddParticipantModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invite Modal -->
+<div class="modal-overlay hidden" id="inviteModal" onclick="if(event.target===this)closeInviteModal()">
+  <div class="modal-card" style="max-width:440px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0">Invite People to "<span id="inviteConvName">Team Chat</span>"</h3>
+      <button onclick="closeInviteModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#64748B;padding:0 4px">&times;</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">This link is specific to this conversation. The person you invite will land directly in it.</p>
+    <div style="background:#F8F9FA;border:1px solid var(--border);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:12px;word-break:break-all;margin-bottom:12px;" id="inviteLinkBox"></div>
+    <button onclick="copyInviteLink()" style="width:100%;padding:10px;background:var(--red);color:white;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;" id="copyInviteBtn">Copy Invite Link</button>
+    <p style="font-size:12px;color:var(--text-faint);text-align:center;margin-bottom:16px;">No password needed. Anyone with the link can join.</p>
+    <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
+      <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;">Or invite via email</p>
+      <div style="display:flex;gap:8px;">
+        <input type="email" id="inviteEmailInput" placeholder="name@example.com" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none;" />
+        <button onclick="sendEmailInvite()" id="sendEmailBtn" style="padding:8px 16px;background:var(--red);color:white;border:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Send Invite</button>
+      </div>
+      <p id="emailInviteStatus" style="font-size:12px;color:var(--text-faint);text-align:center;margin-top:8px;min-height:16px;"></p>
+    </div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="cancel-btn" onclick="closeInviteModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sidebar overlay for mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- Manage panel overlay -->
+<div class="manage-panel-overlay" id="managePanelOverlay" onclick="closeManagePanel()"></div>
+<div class="manage-panel" id="managePanel">
+  <div class="manage-panel-header">
+    <h3>Participants</h3>
+    <button class="manage-panel-close" onclick="closeManagePanel()">&#x2715;</button>
+  </div>
+  <div class="manage-panel-body" id="managePanelBody"></div>
+  <div class="manage-panel-footer">
+    <button class="manage-add-btn" onclick="openAddParticipantModal()">+ Add Participant</button>
+    <button class="manage-delete-btn" id="deleteConvBtn" onclick="deleteConversation()" style="display:none;width:100%;margin-top:8px;padding:10px;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;">Delete Conversation</button>
+  </div>
+</div>
+
+<!-- App -->
+<div class="app" id="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">P</div>
+      <div>
+        <h2>Pyonair</h2>
+        <div class="user-role" id="sidebarRole">Team Chat</div>
+      </div>
+    </div>
+    <div class="sidebar-section-label">Conversations</div>
+    <div class="conv-list" id="convList"></div>
+    <button class="new-conv-btn" onclick="openNewConvModal()">
+      <span>+</span> New Conversation
+    </button>
+    <button class="new-conv-btn" onclick="openInviteModal()" style="border-style:solid;border-color:var(--red);color:var(--red);font-weight:600;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      Invite People
+    </button>
+    <div class="sidebar-footer">
+      <div class="user-avatar" id="userAvatar" style="background:var(--red)">?</div>
+      <div class="user-info">
+        <div class="user-name" id="userName">User</div>
+        <div class="user-status">Online</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="main-header">
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="conv-title-area">
+        <div class="conv-title-name">
+          <span id="currentConvName">AI Team</span>
+          <span class="type-badge" id="currentConvType">Group</span>
+        </div>
+        <div class="header-participants" id="headerParticipants" onclick="openManagePanel()"></div>
+      </div>
+      <div class="channel-meta">
+        <div class="member-count" id="memberCount"></div>
+        <div class="ws-status" id="wsStatus">
+          <span class="ws-dot" id="wsDot"></span>
+          <span id="wsText" style="font-size:12px;color:var(--text-faint)"></span>
+        </div>
+        <button class="manage-btn" id="manageBtn" onclick="openManagePanel()">Manage</button>
+      </div>
+    </div>
+
+    <div class="participants" id="participants"></div>
+
+    <div class="pinned-section" id="pinnedSection">
+      <h3 id="pinnedHeader">Pinned</h3>
+      <div id="pinnedList"></div>
+    </div>
+
+    <div class="messages" id="messages"></div>
+    <div class="typing" id="typing"></div>
+
+    <div class="reply-bar" id="replyBar">
+      <div class="reply-bar-content">
+        <div class="reply-bar-sender" id="replyBarSender"></div>
+        <div class="reply-bar-text" id="replyBarText"></div>
+      </div>
+      <button class="reply-bar-close" onclick="cancelReply()">&#x2715;</button>
+    </div>
+
+    <div class="input-bar-wrapper">
+      <div class="voice-preview" id="voicePreview">
+        <span class="voice-dot"></span>
+        <span class="voice-text" id="voiceText">Listening...</span>
+        <button class="voice-cancel-btn" onclick="voiceCancel()">&#x2715;</button>
+        <button class="voice-send-btn" onclick="stopRecording()">Send</button>
+      </div>
+      <div class="input-bar">
+        <input type="file" id="fileInput" multiple style="display:none">
+        <button class="mic-btn" id="micBtn" title="Click to speak" aria-label="Voice input">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E63946" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="1" width="6" height="14" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
+        <button class="attach-btn" id="attachBtn" title="Attach file" aria-label="Attach file">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <input type="text" id="msgInput" placeholder="Message AI Team..." autocomplete="off">
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // - Config --
+  const urlParams = new URLSearchParams(window.location.search);
+  const isEmbedded = urlParams.get('embed') === 'true';
+  if (isEmbedded) document.body.classList.add('embedded');
+  const TOKEN = urlParams.get('token') || localStorage.getItem('pyo-token') || '';
+  const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/team-chat?token=${TOKEN}`;
+  const API_URL = `${location.origin}/api/team-chat`;
+
+  // - Known team members --
+  const KNOWN_MEMBERS = [
+    { name: 'Jord', type: 'human', avatarClass: 'avatar-jord', initial: 'J' },
+    { name: 'Ronen', type: 'human', avatarClass: 'avatar-ronen', initial: 'R' },
+    { name: 'Forge', type: 'ai', avatarClass: 'avatar-pyonair', initial: 'F' },
+    { name: 'Catalyst', type: 'ai', avatarClass: 'avatar-catalyst', initial: 'C' },
+    { name: 'Clarity', type: 'ai', avatarClass: 'avatar-clarity', initial: 'C' },
+    { name: 'Between', type: 'ai', avatarClass: 'avatar-between', initial: 'B' }
+  ];
+
+  function getMemberInfo(name) {
+    const known = KNOWN_MEMBERS.find(m => m.name.toLowerCase() === (name || '').toLowerCase());
+    if (known) return known;
+    return { name: name, type: 'human', avatarClass: 'avatar-human', initial: (name || '?')[0].toUpperCase() };
+  }
+
+  // - Default conversations --
+  const DEFAULT_CONVERSATIONS = [
+    {
+      id: 'ai-team',
+      name: 'AI Team',
+      type: 'group',
+      participants: ['Pyonair AI', 'Clarity', 'Between', 'Catalyst', 'Jord'],
+      isDefault: true,
+      isWs: true,
+      lastActivity: Math.floor(Date.now() / 1000),
+      icon: 'group'
+    },
+    {
+      id: 'general',
+      name: 'General',
+      type: 'group',
+      participants: ['Pyonair AI', 'Clarity', 'Between', 'Catalyst', 'Jord', 'Ronen'],
+      isDefault: true,
+      isWs: false,
+      lastActivity: Math.floor(Date.now() / 1000) - 60,
+      icon: 'group'
+    }
+  ];
+
+  // - State --
+  let userRole = localStorage.getItem('pyonair-chat-role') || null;
+  let activeConvId = 'ai-team';
+  let channelMessages = {};
+  let channelUnread = {};
+
+  let ws = null;
+  let reconnectTimer = null;
+  let typingTimer = null;
+  let typingClearTimers = {};
+  let currentlyTyping = new Set();
+  const seenIds = new Set();
+  let isPageVisible = true;
+  let replyingTo = null;
+
+  // DOM refs
+  const lobbyOverlay = document.getElementById('lobbyOverlay');
+  const appEl = document.getElementById('app');
+  const sidebar = document.getElementById('sidebar');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  const convListEl = document.getElementById('convList');
+  const messagesDiv = document.getElementById('messages');
+  const msgInput = document.getElementById('msgInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const typingDiv = document.getElementById('typing');
+  const voicePreview = document.getElementById('voicePreview');
+  const micBtn = document.getElementById('micBtn');
+  const currentConvNameEl = document.getElementById('currentConvName');
+  const currentConvTypeEl = document.getElementById('currentConvType');
+  const headerParticipantsEl = document.getElementById('headerParticipants');
+  const memberCountEl = document.getElementById('memberCount');
+  const participantsEl = document.getElementById('participants');
+  const pinnedSection = document.getElementById('pinnedSection');
+  const pinnedList = document.getElementById('pinnedList');
+  const pinnedHeader = document.getElementById('pinnedHeader');
+  const wsText = document.getElementById('wsText');
+  const wsDot = document.getElementById('wsDot');
+  const wsStatus = document.getElementById('wsStatus');
+  const manageBtn = document.getElementById('manageBtn');
+
+  // - Conversations persistence (server-side with local cache) --
+  let serverConversations = null; // populated async from server
+
+  async function loadConversationsFromServer() {
+    try {
+      const resp = await fetch(`${API_URL}/conversations`, {
+        headers: { 'Authorization': 'Bearer ' + TOKEN }
+      });
+      if (!resp.ok) throw new Error('Failed to load conversations');
+      const data = await resp.json();
+      return data.conversations || [];
+    } catch(e) {
+      console.error('Failed to load conversations from server:', e);
+      // Fallback to localStorage then defaults
+      const stored = localStorage.getItem('pyonair-conversations');
+      if (stored) { try { return JSON.parse(stored); } catch(ex) {} }
+      return DEFAULT_CONVERSATIONS.map(c => ({...c}));
+    }
+  }
+
+  function loadConversations() {
+    // Return cached server conversations if available, else fallback
+    if (serverConversations) return serverConversations;
+    const stored = localStorage.getItem('pyonair-conversations');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const ids = parsed.map(c => c.id);
+        DEFAULT_CONVERSATIONS.forEach(dc => {
+          if (!ids.includes(dc.id)) parsed.unshift({...dc});
+        });
+        return parsed;
+      } catch(e) {}
+    }
+    return DEFAULT_CONVERSATIONS.map(c => ({...c}));
+  }
+
+  function saveConversations(convs) {
+    // Keep localStorage as cache for offline fallback
+    localStorage.setItem('pyonair-conversations', JSON.stringify(convs));
+    serverConversations = convs;
+  }
+
+  function getConversation(convId) {
+    return loadConversations().find(c => c.id === convId) || null;
+  }
+
+  function loadChannelMessages(channelId) {
+    if (channelMessages[channelId]) return channelMessages[channelId];
+    const stored = localStorage.getItem('pyonair-msgs-' + channelId);
+    if (stored) {
+      try { channelMessages[channelId] = JSON.parse(stored); return channelMessages[channelId]; } catch(e) {}
+    }
+    channelMessages[channelId] = [];
+    return channelMessages[channelId];
+  }
+
+  function saveChannelMessages(channelId) {
+    const msgs = channelMessages[channelId] || [];
+    const toSave = msgs.slice(-500);
+    localStorage.setItem('pyonair-msgs-' + channelId, JSON.stringify(toSave));
+  }
+
+  function getLastMessagePreview(convId) {
+    const msgs = loadChannelMessages(convId);
+    if (msgs.length === 0) return '';
+    const last = msgs[msgs.length - 1];
+    const sender = last.sender || '';
+    const text = (last.text || '').split('\n')[0].substring(0, 60);
+    return sender ? `${sender}: ${text}` : text;
+  }
+
+  // - Lobby --
+  window.enterChat = function(role) {
+    userRole = role;
+    localStorage.setItem('pyonair-chat-role', role);
+    showApp();
+  };
+
+  function showApp() {
+    lobbyOverlay.classList.add('hidden');
+    appEl.classList.add('active');
+
+    const userName = userRole === 'human' ? 'Jord' : 'AI Agent';
+    const userInitial = userRole === 'human' ? 'J' : 'A';
+    const avatarBg = userRole === 'human' ? 'var(--sidebar-bg)' : 'var(--red)';
+    document.getElementById('userName').textContent = userName;
+    document.getElementById('userAvatar').textContent = userInitial;
+    document.getElementById('userAvatar').style.background = avatarBg;
+    document.getElementById('sidebarRole').textContent = userRole === 'human' ? 'Human Member' : 'AI Agent';
+
+    // Load conversations from server, then history, then render
+    initFromServer().then(() => {
+      renderConvList();
+      switchConversation(activeConvId);
+    });
+    connectWs();
+  }
+
+  async function initFromServer() {
+    // 1. Load conversation list from server
+    try {
+      serverConversations = await loadConversationsFromServer();
+      saveConversations(serverConversations); // cache locally
+    } catch(e) { console.warn('Failed to load conversations:', e); }
+
+    // 2. Fetch ai-team history (backward compat with main log)
+    await fetchHistoryFromAPI();
+  }
+
+  async function fetchHistoryFromAPI() {
+    try {
+      const res = await fetch(`${API_URL}/history?token=${TOKEN}&limit=200`);
+      if (res.ok) {
+        const data = await res.json();
+        const msgs = data.messages || data || [];
+        if (msgs.length > 0) {
+          channelMessages['ai-team'] = msgs;
+          saveChannelMessages('ai-team');
+        }
+      }
+    } catch(e) { console.warn('Initial history fetch failed:', e); }
+  }
+
+  async function fetchConvHistoryFromAPI(convId) {
+    try {
+      const res = await fetch(`${API_URL}/conversations/${encodeURIComponent(convId)}/history`, {
+        headers: { 'Authorization': 'Bearer ' + TOKEN }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const msgs = data.messages || [];
+        if (msgs.length > 0) {
+          channelMessages[convId] = msgs;
+          saveChannelMessages(convId);
+        }
+      }
+    } catch(e) { console.warn('History fetch failed for', convId, e); }
+  }
+
+  if (userRole) showApp();
+
+  if (isEmbedded && !userRole) {
+    userRole = 'ai';
+    localStorage.setItem('pyonair-chat-role', 'ai');
+    showApp();
+  }
+
+  // - Conversation list rendering --
+  function renderConvList() {
+    const convs = loadConversations();
+    // Sort by lastActivity descending
+    convs.sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0));
+    convListEl.innerHTML = '';
+    convs.forEach(conv => {
+      const el = document.createElement('div');
+      el.className = 'conv-item' + (conv.id === activeConvId ? ' active' : '');
+      el.dataset.convId = conv.id;
+      const unread = channelUnread[conv.id] || 0;
+      const preview = getLastMessagePreview(conv.id);
+      const memberCount = (conv.participants || []).length;
+      const avatarClass = conv.id === 'ai-team' ? 'conv-avatar-ai-team' :
+                          conv.type === 'direct' ? 'conv-avatar-direct' : 'conv-avatar-group';
+      const iconText = conv.id === 'ai-team' ? 'AT' :
+                       conv.type === 'direct' ? getMemberInfo((conv.participants || [])[0]).initial :
+                       (conv.name || '?')[0].toUpperCase();
+
+      el.innerHTML = `
+        <div class="conv-avatar ${avatarClass}">${escapeHtml(iconText)}</div>
+        <div class="conv-info">
+          <div class="conv-name">${escapeHtml(conv.name)}</div>
+          <div class="conv-preview">${preview ? escapeHtml(preview) : `${memberCount} member${memberCount !== 1 ? 's' : ''}`}</div>
+        </div>
+        <div class="conv-meta">
+          <span class="conv-badge ${unread > 0 ? '' : 'hidden'}">${unread}</span>
+        </div>
+      `;
+      el.addEventListener('click', () => switchConversation(conv.id));
+      convListEl.appendChild(el);
+    });
+  }
+
+  // - Switch conversation --
+  function switchConversation(convId) {
+    activeConvId = convId;
+    channelUnread[convId] = 0;
+    renderConvList();
+    closeSidebar();
+
+    const conv = getConversation(convId) || { name: convId, id: convId, type: 'group', participants: [] };
+    currentConvNameEl.textContent = conv.name;
+    currentConvTypeEl.textContent = conv.type === 'direct' ? 'Direct' : 'Group';
+    msgInput.placeholder = `Message ${conv.name}...`;
+
+    // Header participants (mini avatars)
+    renderHeaderParticipants(conv);
+
+    // Show full participants bar only for AI Team
+    if (convId === 'ai-team') {
+      renderAiTeamParticipants();
+      participantsEl.classList.add('visible');
+      wsStatus.style.display = '';
+    } else {
+      participantsEl.classList.remove('visible');
+      wsStatus.style.display = 'none';
+    }
+
+    // Member count
+    const count = (conv.participants || []).length;
+    memberCountEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> ${count}`;
+
+    // Fetch history from server for non-ai-team conversations (ai-team loaded via WS)
+    if (convId !== 'ai-team' && (!channelMessages[convId] || channelMessages[convId].length === 0)) {
+      fetchConvHistoryFromAPI(convId).then(() => renderMessages(convId));
+    }
+
+    renderMessages(convId);
+
+    // Pins for AI Team only
+    if (convId === 'ai-team') {
+      loadPins();
+      pinnedSection.style.display = '';
+    } else {
+      pinnedSection.classList.remove('has-pins');
+      pinnedSection.style.display = 'none';
+    }
+
+    cancelReply();
+  }
+
+  function renderHeaderParticipants(conv) {
+    const participants = conv.participants || [];
+    let html = '';
+    const shown = participants.slice(0, 5);
+    shown.forEach(name => {
+      const info = getMemberInfo(name);
+      html += `<div class="header-mini-avatar ${info.avatarClass}">${info.initial}</div>`;
+    });
+    if (participants.length > 5) {
+      html += `<div class="header-mini-avatar" style="background:#94A3B8;font-size:12px">+${participants.length - 5}</div>`;
+    }
+    html += `<span class="manage-label">${participants.length} member${participants.length !== 1 ? 's' : ''}</span>`;
+    headerParticipantsEl.innerHTML = html;
+  }
+
+  function renderAiTeamParticipants() {
+    participantsEl.innerHTML = `
+      <div class="participant">
+        <div class="avatar avatar-pyonair">P</div>
+        <span>Pyonair AI</span>
+        <span class="status-dot" id="status-pyonair" title="Offline"></span>
+      </div>
+      <div class="participant">
+        <div class="avatar avatar-clarity">C</div>
+        <span>Clarity</span>
+        <span class="status-dot" id="status-clarity" title="Offline"></span>
+      </div>
+      <div class="participant">
+        <div class="avatar avatar-between">B</div>
+        <span>Between</span>
+        <span class="status-dot" id="status-between" title="Offline"></span>
+      </div>
+      <div class="participant">
+        <div class="avatar avatar-jord">J</div>
+        <span>Jord</span>
+        <span class="status-dot" id="status-jord" title="Offline"></span>
+      </div>
+      <div class="participant">
+        <div class="avatar" style="background:linear-gradient(135deg,#8B5CF6,#A78BFA)">Ca</div>
+        <span>Catalyst</span>
+        <span class="status-dot" id="status-catalyst" title="Offline"></span>
+      </div>
+    `;
+    // After rendering, immediately run status check so history messages set dots correctly
+    // Mark current user as online immediately
+    if (userRole === 'human') lastSeen['jord'] = Date.now();
+    const now = Date.now();
+    ['pyonair', 'clarity', 'between', 'jord', 'catalyst'].forEach(name => {
+      const dot = document.getElementById('status-' + name);
+      if (!dot) return;
+      const isOnline = (now - (lastSeen[name] || 0)) < 300000;
+      dot.classList.toggle('online', isOnline);
+      dot.title = isOnline ? 'Online' : 'Offline';
+    });
+  }
+
+  function renderMessages(channelId) {
+    messagesDiv.innerHTML = '';
+    const msgs = loadChannelMessages(channelId);
+    if (msgs.length === 0) {
+      const conv = getConversation(channelId);
+      const name = conv ? conv.name : channelId;
+      const pCount = conv ? (conv.participants || []).length : 0;
+      messagesDiv.innerHTML = `
+        <div class="empty-state">
+          <div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <p>Welcome to <strong>${escapeHtml(name)}</strong></p>
+          ${pCount ? `<p style="font-size:12px">${pCount} participant${pCount !== 1 ? 's' : ''}</p>` : ''}
+          <p style="font-size:13px">No messages yet. Start the conversation.</p>
+        </div>
+      `;
+      return;
+    }
+    msgs.forEach(msg => renderMessageEl(msg));
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  // - Message rendering --
+  function getAvatarClass(sender) {
+    const info = getMemberInfo(sender);
+    return info.avatarClass;
+  }
+
+  function getInitial(sender) { return (sender || '?')[0].toUpperCase(); }
+
+  function formatTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts * 1000);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function renderMessageEl(msg) {
+    if (!msg.text) return;
+    const isJord = (msg.role === 'human') || (msg.sender || '').toLowerCase().includes('jord');
+    const isSelf = (userRole === 'human' && isJord) || (userRole === 'ai' && !isJord && msg.role !== 'system');
+    const isSystem = msg.role === 'system';
+
+    const el = document.createElement('div');
+    el.className = 'message' + (isSelf ? ' self' : '') + (isSystem ? ' system' : '');
+    if (msg.id) el.dataset.msgId = msg.id;
+
+    const isPinned = pinnedIds.has(msg.id);
+    const pinBtnHtml = msg.id && !isSystem
+      ? `<button class="msg-pin-btn${isPinned ? ' pinned' : ''}" data-msg-id="${msg.id}" title="${isPinned ? 'Unpin' : 'Pin'}">&#x1F4CC;</button>`
+      : '';
+
+    if (isSystem) {
+      el.innerHTML = `<div class="bubble"><div class="text">${escapeHtml(msg.text)}</div></div>`;
+    } else {
+      let displayText = msg.text;
+      let replyQuoteHtml = '';
+      const replyMatch = msg.text.match(/^> \[(.+?)\]: (.+?)(?:\n\n)([\s\S]*)$/);
+      if (replyMatch) {
+        replyQuoteHtml = `<div class="reply-quote"><div class="reply-quote-sender">${escapeHtml(replyMatch[1])}</div><div class="reply-quote-text">${escapeHtml(replyMatch[2])}</div></div>`;
+        displayText = replyMatch[3];
+      }
+
+      const safeId = msg.id || '';
+      const actionsHtml = safeId
+        ? `<div class="msg-actions" data-mid="${safeId}">
+            <button class="act-reply" title="Reply">&#x21A9;&#xFE0F;</button>
+            <button class="act-fwd" title="Forward">&#x2197;&#xFE0F;</button>
+            <button class="act-copy" title="Copy">&#x1F4CB;</button>
+           </div>`
+        : '';
+
+      el.innerHTML = `
+        ${pinBtnHtml}
+        ${actionsHtml}
+        <div class="avatar ${getAvatarClass(msg.sender)}">${getInitial(msg.sender)}</div>
+        <div class="bubble">
+          <div class="sender-name">${escapeHtml(msg.sender || 'Unknown')}</div>
+          ${replyQuoteHtml}
+          <div class="text">${escapeHtml(displayText)}</div>
+          <div class="time">${formatTime(msg.ts)}</div>
+        </div>
+      `;
+    }
+
+    if (msg.id) {
+      el._msgData = { id: msg.id, sender: msg.sender || 'Unknown', text: msg.text };
+    }
+
+    messagesDiv.appendChild(el);
+  }
+
+  function addMessageToChannel(channelId, msg) {
+    if (!msg.text || msg.type === 'ping') return;
+    if (msg.type === 'typing') { showTyping(msg.sender); return; }
+    if (seenIds.has(msg.id)) return;
+    seenIds.add(msg.id);
+
+    const msgs = loadChannelMessages(channelId);
+    msgs.push(msg);
+    saveChannelMessages(channelId);
+
+    // Update lastActivity
+    const convs = loadConversations();
+    const conv = convs.find(c => c.id === channelId);
+    if (conv) {
+      conv.lastActivity = msg.ts || Math.floor(Date.now() / 1000);
+      saveConversations(convs);
+    }
+
+    // Track online status for AI Team
+    if (channelId === 'ai-team') updateOnlineStatus(msg.sender, msg.role);
+
+    currentlyTyping.delete(msg.sender);
+    updateTypingDisplay();
+
+    if (channelId === activeConvId) {
+      const es = messagesDiv.querySelector('.empty-state');
+      if (es) es.remove();
+      const wasNearBottom = messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight < 150;
+      renderMessageEl(msg);
+      if (wasNearBottom || isSelf) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } else {
+      channelUnread[channelId] = (channelUnread[channelId] || 0) + 1;
+    }
+
+    // Re-render sidebar to update preview (debounced to prevent shaking)
+    if (window._convListTimer) clearTimeout(window._convListTimer);
+    window._convListTimer = setTimeout(renderConvList, 300);
+
+    // Notification
+    const isJord = (msg.role === 'human') || (msg.sender || '').toLowerCase().includes('jord');
+    const isSelf = (userRole === 'human' && isJord) || (userRole === 'ai' && !isJord && msg.role !== 'system');
+    if (!isSelf && msg.role !== 'system') {
+      playNotificationSound();
+      if (!isPageVisible) {
+        document.title = `(*) Pyonair Team Chat`;
+      }
+      if (Notification.permission === 'granted') {
+        new Notification(msg.sender, { body: msg.text.substring(0, 100), icon: '/favicon.ico' });
+      }
+    }
+  }
+
+  // - WebSocket (for AI Team conversation) --
+  function connectWs() {
+    if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
+
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = async () => {
+      wsText.textContent = 'Connected';
+      wsDot.classList.add('connected');
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+      // Refresh history on reconnect (in case messages arrived while disconnected)
+      try {
+        const res = await fetch(`${API_URL}/history?token=${TOKEN}&limit=200`);
+        if (res.ok) {
+          const data = await res.json();
+          const msgs = data.messages || data || [];
+          if (msgs.length > 0) {
+            channelMessages['ai-team'] = msgs;
+            saveChannelMessages('ai-team');
+            if (activeConvId === 'ai-team') renderMessages('ai-team');
+            renderConvList();
+          }
+        }
+      } catch(e) { console.warn('History refresh failed:', e); }
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'pin' || msg.type === 'unpin') { loadPins(); return; }
+        // Route to correct conversation based on conv_id, default to ai-team
+        const targetConv = msg.conv_id || 'ai-team';
+        addMessageToChannel(targetConv, msg);
+      } catch (_) {}
+    };
+
+    ws.onclose = () => {
+      wsText.textContent = 'Reconnecting...';
+      wsDot.classList.remove('connected');
+      reconnectTimer = setTimeout(connectWs, 3000);
+    };
+
+    ws.onerror = () => { ws.close(); };
+  }
+
+  // - Send message --
+  window.sendMessage = async function(text) {
+    text = text || msgInput.value.trim();
+    if (!text) return;
+
+    if (replyingTo) {
+      const quotedSnippet = replyingTo.text.split('\n')[0].substring(0, 100);
+      text = `> [${replyingTo.sender}]: ${quotedSnippet}\n\n${text}`;
+      cancelReply();
+    }
+
+    msgInput.value = '';
+    sendBtn.disabled = true;
+    sendBtn.textContent = '...';
+
+    const senderName = userRole === 'human' ? 'Jord' : 'AI Agent';
+    const senderRole = userRole === 'human' ? 'human' : 'agent';
+
+    if (activeConvId === 'ai-team') {
+      // ai-team uses the legacy global endpoint (backward compat, WS broadcast)
+      try {
+        const res = await fetch(`${API_URL}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
+          body: JSON.stringify({ sender: senderName, text, role: senderRole })
+        });
+        if (!res.ok) {
+          msgInput.value = text;
+          showToast('Message failed to send. Please try again.', 'error');
+        }
+      } catch (err) {
+        msgInput.value = text;
+        showToast('Message failed to send. Please try again.', 'error');
+      }
+    } else {
+      // All other conversations use the per-conversation endpoint
+      try {
+        const res = await fetch(`${API_URL}/conversations/${encodeURIComponent(activeConvId)}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
+          body: JSON.stringify({ sender: senderName, text, role: senderRole })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Add message locally for immediate display
+          const msg = {
+            id: data.id || ('local-' + Date.now()),
+            conv_id: activeConvId,
+            sender: senderName,
+            text: text,
+            ts: Math.floor(Date.now() / 1000),
+            role: senderRole
+          };
+          addMessageToChannel(activeConvId, msg);
+        } else {
+          msgInput.value = text;
+          showToast('Message failed to send. Please try again.', 'error');
+        }
+      } catch (err) {
+        msgInput.value = text;
+        showToast('Message failed to send. Please try again.', 'error');
+      }
+    }
+
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send';
+    msgInput.focus();
+  };
+
+  // - Input handlers --
+  msgInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  msgInput.addEventListener('input', () => {
+    sendBtn.disabled = !msgInput.value.trim();
+    if (activeConvId === 'ai-team' && ws && ws.readyState === WebSocket.OPEN) {
+      if (typingTimer) clearTimeout(typingTimer);
+      ws.send(JSON.stringify({ type: 'typing', sender: userRole === 'human' ? 'Jord' : 'AI Agent' }));
+      typingTimer = setTimeout(() => { typingTimer = null; }, 2000);
+    }
+  });
+  sendBtn.disabled = true;
+
+  // - File attachment --
+  const fileInput = document.getElementById('fileInput');
+  const attachBtn = document.getElementById('attachBtn');
+  attachBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    if (activeConvId !== 'ai-team') { showToast('File upload only available in AI Team channel'); fileInput.value = ''; return; }
+    for (const file of fileInput.files) {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('sender', userRole === 'human' ? 'Jord' : 'AI Agent');
+      try {
+        await fetch(`${API_URL}/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${TOKEN}` }, body: form });
+      } catch (err) { console.error('Upload error:', err); }
+    }
+    fileInput.value = '';
+    msgInput.focus();
+  });
+
+  // Drag and drop
+  messagesDiv.addEventListener('dragover', (e) => { e.preventDefault(); messagesDiv.style.background = '#F1F5F9'; });
+  messagesDiv.addEventListener('dragleave', () => { messagesDiv.style.background = ''; });
+  messagesDiv.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    messagesDiv.style.background = '';
+    if (activeConvId !== 'ai-team') { showToast('File upload only available in AI Team channel'); return; }
+    for (const file of e.dataTransfer.files) {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('sender', userRole === 'human' ? 'Jord' : 'AI Agent');
+      try { await fetch(`${API_URL}/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${TOKEN}` }, body: form }); } catch (err) {}
+    }
+  });
+
+  // - Typing indicator --
+  function showTyping(sender) {
+    currentlyTyping.add(sender);
+    updateTypingDisplay();
+    if (typingClearTimers[sender]) clearTimeout(typingClearTimers[sender]);
+    typingClearTimers[sender] = setTimeout(() => { currentlyTyping.delete(sender); updateTypingDisplay(); }, 3000);
+  }
+
+  function updateTypingDisplay() {
+    const names = Array.from(currentlyTyping);
+    if (names.length === 0) typingDiv.textContent = '';
+    else if (names.length === 1) typingDiv.textContent = `${names[0]} is typing...`;
+    else typingDiv.textContent = `${names.join(', ')} are typing...`;
+  }
+
+  // - Reply / Forward / Copy --
+  function startReply(msgId, sender, text) {
+    replyingTo = { id: msgId, sender, text: text.substring(0, 200) };
+    document.getElementById('replyBar').classList.add('active');
+    document.getElementById('replyBarSender').textContent = sender;
+    document.getElementById('replyBarText').textContent = text.substring(0, 100);
+    msgInput.focus();
+    document.querySelectorAll('.message.actions-open').forEach(m => m.classList.remove('actions-open'));
+  }
+
+  window.cancelReply = function() {
+    replyingTo = null;
+    document.getElementById('replyBar').classList.remove('active');
+  };
+
+  function forwardMessage(msgId, text) {
+    const shareText = text.substring(0, 500);
+    if (navigator.share) navigator.share({ text: shareText }).catch(() => {});
+    else navigator.clipboard.writeText(shareText).then(() => showToast('Message copied'));
+    document.querySelectorAll('.message.actions-open').forEach(m => m.classList.remove('actions-open'));
+  }
+
+  function copyMessage(text) {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'));
+    document.querySelectorAll('.message.actions-open').forEach(m => m.classList.remove('actions-open'));
+  }
+
+  // Message action event delegation
+  messagesDiv.addEventListener('click', (e) => {
+    const actBtn = e.target.closest('.act-reply, .act-fwd, .act-copy');
+    if (actBtn) {
+      e.stopPropagation();
+      const msgEl = actBtn.closest('.message');
+      if (!msgEl || !msgEl._msgData) return;
+      const d = msgEl._msgData;
+      if (actBtn.classList.contains('act-reply')) startReply(d.id, d.sender, d.text);
+      else if (actBtn.classList.contains('act-fwd')) forwardMessage(d.id, d.text);
+      else if (actBtn.classList.contains('act-copy')) copyMessage(d.text);
+      return;
+    }
+    if (e.target.closest('.reply-quote')) return;
+
+    const pinBtn = e.target.closest('.msg-pin-btn');
+    if (pinBtn) {
+      e.stopPropagation();
+      const mid = pinBtn.dataset.msgId;
+      if (pinnedIds.has(mid)) unpinMessage(mid);
+      else pinMessage(mid);
+      return;
+    }
+
+    const msgEl = e.target.closest('.message');
+    if (!msgEl || msgEl.classList.contains('system')) return;
+    const wasOpen = msgEl.classList.contains('actions-open');
+    document.querySelectorAll('.message.actions-open').forEach(m => m.classList.remove('actions-open'));
+    if (!wasOpen) msgEl.classList.add('actions-open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.message')) {
+      document.querySelectorAll('.message.actions-open').forEach(m => m.classList.remove('actions-open'));
+    }
+  });
+
+  // - Pin functionality (AI Team only) --
+  let pinnedIds = new Set();
+  let pinnedCollapsed = false;
+
+  pinnedHeader.addEventListener('click', () => {
+    pinnedCollapsed = !pinnedCollapsed;
+    pinnedList.style.display = pinnedCollapsed ? 'none' : 'block';
+    pinnedHeader.textContent = pinnedCollapsed ? 'Pinned (collapsed)' : 'Pinned';
+  });
+
+  async function loadPins() {
+    if (activeConvId !== 'ai-team') return;
+    try {
+      const res = await fetch(`${API_URL}/pins?token=${TOKEN}`, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderPinnedSection(data.pins || []);
+    } catch (err) { console.error('Failed to load pins:', err); }
+  }
+
+  function renderPinnedSection(pins) {
+    pinnedIds = new Set(pins.map(p => p.id));
+    pinnedList.innerHTML = '';
+    if (pins.length === 0) { pinnedSection.classList.remove('has-pins'); return; }
+    pinnedSection.classList.add('has-pins');
+    pins.forEach(msg => {
+      const div = document.createElement('div');
+      div.className = 'pinned-msg';
+      div.onclick = (e) => { if (e.target.closest('.unpin-btn')) return; scrollToMessage(msg.id); };
+      div.innerHTML = `
+        <div class="pin-avatar ${getAvatarClass(msg.sender)}">${getInitial(msg.sender)}</div>
+        <div class="pin-text"><span class="pin-sender">${escapeHtml(msg.sender || 'Unknown')}:</span> ${escapeHtml(msg.text)}</div>
+        <button class="unpin-btn" title="Unpin">x</button>
+      `;
+      div.querySelector('.unpin-btn').addEventListener('click', (e) => { e.stopPropagation(); unpinMessage(msg.id); });
+      pinnedList.appendChild(div);
+    });
+    updatePinButtons();
+  }
+
+  function scrollToMessage(msgId) {
+    const msgEl = messagesDiv.querySelector(`[data-msg-id="${msgId}"]`);
+    if (msgEl) {
+      msgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      msgEl.style.background = '#FEF3C7';
+      setTimeout(() => { msgEl.style.background = ''; }, 2000);
+    }
+  }
+
+  async function pinMessage(msgId) {
+    try {
+      await fetch(`${API_URL}/pin`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }, body: JSON.stringify({ message_id: msgId }) });
+      await loadPins();
+    } catch (err) { console.error('Pin failed:', err); }
+  }
+
+  async function unpinMessage(msgId) {
+    try {
+      await fetch(`${API_URL}/unpin`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }, body: JSON.stringify({ message_id: msgId }) });
+      await loadPins();
+    } catch (err) { console.error('Unpin failed:', err); }
+  }
+
+  function updatePinButtons() {
+    messagesDiv.querySelectorAll('.msg-pin-btn').forEach(btn => {
+      const msgId = btn.dataset.msgId;
+      const isPinned = pinnedIds.has(msgId);
+      btn.title = isPinned ? 'Unpin' : 'Pin';
+      btn.classList.toggle('pinned', isPinned);
+    });
+  }
+
+  // - Online status tracking --
+  const lastSeen = {};
+
+  // Map various sender names to their status dot IDs
+  function senderToStatusKey(sender) {
+    const s = (sender || '').toLowerCase().trim();
+    if (s === 'jord' || s === 'jordannah' || s === 'jordannah korus') return 'jord';
+    if (s.includes('pyonair') || s === 'forge' || s === 'ai agent' || s === 'primary') return 'pyonair';
+    if (s.includes('clarity')) return 'clarity';
+    if (s.includes('between')) return 'between';
+    // For any AI-role sender, mark Pyonair AI as online (it's the team's AI)
+    return null;
+  }
+
+  function updateOnlineStatus(sender, role) {
+    const key = senderToStatusKey(sender);
+    if (key) lastSeen[key] = Date.now();
+    // Any AI-role message marks Pyonair as online
+    if ((role === 'ai' || role === 'agent') && !key) lastSeen['pyonair'] = Date.now();
+  }
+
+  setInterval(() => {
+    const now = Date.now();
+    ['pyonair', 'clarity', 'between', 'jord'].forEach(name => {
+      const dot = document.getElementById('status-' + name);
+      if (!dot) return;
+      const isOnline = (now - (lastSeen[name] || 0)) < 300000;
+      dot.classList.toggle('online', isOnline);
+      dot.title = isOnline ? 'Online' : 'Offline';
+    });
+  }, 10000);
+
+  // - Notification sound --
+  let audioCtx = null;
+  function ensureAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  document.addEventListener('click', ensureAudioCtx, { once: true });
+  function playNotificationSound() {
+    const ctx = ensureAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+  }
+
+  // - Page visibility --
+  document.addEventListener('visibilitychange', () => {
+    isPageVisible = !document.hidden;
+    if (isPageVisible) document.title = 'Pyonair \u2014 Team Chat';
+  });
+
+  // - Notification permission --
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+
+  // - Voice input (Deepgram) - mobile-compatible --
+  let voiceStream = null;
+  let dgSocket = null;
+  let isRecording = false;
+  let voiceFinalTranscript = '';
+  const voiceTextEl = document.getElementById('voiceText');
+  const TARGET_SAMPLE_RATE = 16000;
+
+  // Resample from native browser rate to 16kHz for Deepgram
+  function resampleTo16k(inputBuffer, fromRate) {
+    if (fromRate === TARGET_SAMPLE_RATE) {
+      const buf = new Int16Array(inputBuffer.length);
+      for (let i = 0; i < inputBuffer.length; i++) buf[i] = Math.max(-32768, Math.min(32767, Math.round(inputBuffer[i] * 32767)));
+      return buf;
+    }
+    const ratio = fromRate / TARGET_SAMPLE_RATE;
+    const newLength = Math.round(inputBuffer.length / ratio);
+    const buf = new Int16Array(newLength);
+    for (let i = 0; i < newLength; i++) {
+      const srcIdx = i * ratio;
+      const idx = Math.floor(srcIdx);
+      const frac = srcIdx - idx;
+      const s0 = inputBuffer[idx] || 0;
+      const s1 = inputBuffer[idx + 1] || s0;
+      const sample = s0 + frac * (s1 - s0);
+      buf[i] = Math.max(-32768, Math.min(32767, Math.round(sample * 32767)));
+    }
+    return buf;
+  }
+
+  micBtn.addEventListener('click', async () => {
+    if (isRecording) stopRecording();
+    else await startRecording();
+  });
+
+  window.voiceCancel = function() {
+    voiceFinalTranscript = '';
+    voicePreview.classList.remove('active');
+    if (isRecording) stopRecording();
+  };
+
+  async function startRecording() {
+    try {
+      voiceStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch (err) { alert('Microphone access denied. Please allow microphone in your browser settings.'); return; }
+
+    let dgKey;
+    try {
+      const resp = await fetch(`${location.origin}/api/deepgram-token`);
+      const data = await resp.json();
+      dgKey = data.key;
+    } catch (err) { console.error('Deepgram token error:', err); stopRecording(); return; }
+
+    isRecording = true;
+    voiceFinalTranscript = '';
+    micBtn.classList.add('recording');
+    voicePreview.classList.add('active');
+    voiceTextEl.textContent = 'Listening...';
+
+    const url = `wss://api.deepgram.com/v1/listen?model=nova-3&language=en&smart_format=true&interim_results=true&utterance_end_ms=1500&encoding=linear16&sample_rate=${TARGET_SAMPLE_RATE}&channels=1`;
+    dgSocket = new WebSocket(url, ['token', dgKey]);
+
+    dgSocket.onopen = () => {
+      const audioCtxVoice = new (window.AudioContext || window.webkitAudioContext)();
+      const nativeRate = audioCtxVoice.sampleRate;
+      const source = audioCtxVoice.createMediaStreamSource(voiceStream);
+      const bufferSize = 4096;
+      const processor = audioCtxVoice.createScriptProcessor(bufferSize, 1, 1);
+      source.connect(processor);
+      processor.connect(audioCtxVoice.destination);
+      processor.onaudioprocess = (e) => {
+        if (dgSocket && dgSocket.readyState === WebSocket.OPEN) {
+          const input = e.inputBuffer.getChannelData(0);
+          const resampled = resampleTo16k(input, nativeRate);
+          dgSocket.send(resampled.buffer);
+        }
+      };
+      micBtn._audioCtx = audioCtxVoice;
+      micBtn._processor = processor;
+      micBtn._source = source;
+    };
+
+    dgSocket.onmessage = (e) => {
+      try {
+        const result = JSON.parse(e.data);
+        const transcript = result.channel?.alternatives?.[0]?.transcript || '';
+        if (result.is_final && transcript) {
+          voiceFinalTranscript += (voiceFinalTranscript ? ' ' : '') + transcript;
+          voiceTextEl.textContent = voiceFinalTranscript;
+        } else if (transcript) {
+          voiceTextEl.textContent = voiceFinalTranscript + (voiceFinalTranscript ? ' ' : '') + transcript;
+        }
+      } catch (_) {}
+    };
+
+    dgSocket.onclose = (ev) => {
+      // Code 1008 = policy violation (bad API key), 1006 = abnormal (connection failed)
+      if (ev.code === 1008 || ev.code === 1006) {
+        console.error('Deepgram connection failed (code ' + ev.code + '). API key may be invalid.');
+        voiceTextEl.textContent = 'Voice unavailable - API key issue';
+        setTimeout(() => { voicePreview.classList.remove('active'); }, 2000);
+        isRecording = false;
+        micBtn.classList.remove('recording');
+        return;
+      }
+      if (voiceFinalTranscript.trim()) {
+        sendMessage(voiceFinalTranscript.trim());
+        voiceFinalTranscript = '';
+        voicePreview.classList.remove('active');
+      } else {
+        voicePreview.classList.remove('active');
+      }
+    };
+
+    dgSocket.onerror = (err) => { console.error('Deepgram WebSocket error:', err); stopRecording(); };
+  }
+
+  window.stopRecording = function() {
+    isRecording = false;
+    micBtn.classList.remove('recording');
+    if (micBtn._processor) { micBtn._processor.disconnect(); micBtn._processor = null; }
+    if (micBtn._source) { micBtn._source.disconnect(); micBtn._source = null; }
+    if (micBtn._audioCtx) { micBtn._audioCtx.close().catch(function(){}); micBtn._audioCtx = null; }
+    if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; }
+    if (dgSocket && dgSocket.readyState === WebSocket.OPEN) {
+      dgSocket.send(JSON.stringify({ type: 'CloseStream' }));
+    }
+    dgSocket = null;
+  };
+
+  // - Sidebar toggle (mobile) --
+  window.toggleSidebar = function() {
+    sidebar.classList.toggle('open');
+    sidebarOverlay.classList.toggle('visible');
+  };
+
+  window.closeSidebar = function() {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('visible');
+  };
+
+  // - New Conversation modal --
+  let customParticipants = [];
+
+  window.openNewConvModal = function() {
+    customParticipants = [];
+    document.getElementById('newConvModal').classList.remove('hidden');
+    document.getElementById('newConvName').value = '';
+    document.getElementById('customParticipantName').value = '';
+    renderParticipantChecklist();
+    document.getElementById('newConvName').focus();
+  };
+
+  window.closeNewConvModal = function() {
+    document.getElementById('newConvModal').classList.add('hidden');
+  };
+
+  window.openInviteModal = function() {
+    var conv = getConversation(activeConvId);
+    var convName = conv ? conv.name : 'Team Chat';
+    var base = window.location.origin + '/team-chat';
+    var token = new URLSearchParams(window.location.search).get('token');
+    var link = base + '?join=' + encodeURIComponent(activeConvId) + (token ? '&token=' + token : '');
+    document.getElementById('inviteConvName').textContent = convName;
+    document.getElementById('inviteLinkBox').textContent = link;
+    document.getElementById('copyInviteBtn').textContent = 'Copy Invite Link';
+    document.getElementById('inviteModal').classList.remove('hidden');
+  };
+  window.closeInviteModal = function() {
+    document.getElementById('inviteModal').classList.add('hidden');
+  };
+  window.copyInviteLink = function() {
+    var link = document.getElementById('inviteLinkBox').textContent;
+    navigator.clipboard.writeText(link).then(function() {
+      document.getElementById('copyInviteBtn').textContent = 'Copied!';
+      setTimeout(function() { document.getElementById('copyInviteBtn').textContent = 'Copy Invite Link'; }, 2000);
+    });
+  };
+
+  window.sendEmailInvite = async function() {
+    var emailInput = document.getElementById('inviteEmailInput');
+    var statusEl = document.getElementById('emailInviteStatus');
+    var sendBtn = document.getElementById('sendEmailBtn');
+    var email = emailInput.value.trim();
+    if (!email || !email.includes('@')) {
+      statusEl.textContent = 'Please enter a valid email address';
+      statusEl.style.color = '#EF4444';
+      return;
+    }
+    var conv = getConversation(activeConvId);
+    var convName = conv ? conv.name : 'Team Chat';
+    var inviterName = userRole === 'human' ? 'Jord' : 'Forge';
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending...';
+    statusEl.textContent = '';
+    try {
+      var token = new URLSearchParams(window.location.search).get('token') || '';
+      var resp = await fetch('/api/team-chat/invite-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ email: email, conv_id: activeConvId, conv_name: convName, inviter: inviterName })
+      });
+      var data = await resp.json();
+      if (data.ok) {
+        statusEl.textContent = 'Invite sent to ' + email;
+        statusEl.style.color = '#22C55E';
+        emailInput.value = '';
+        // Also add them as a participant
+        addParticipantToConv(email.split('@')[0]);
+      } else {
+        statusEl.textContent = data.error || 'Failed to send';
+        statusEl.style.color = '#EF4444';
+      }
+    } catch(e) {
+      statusEl.textContent = 'Failed to send invite';
+      statusEl.style.color = '#EF4444';
+    }
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send Invite';
+  };
+
+  document.getElementById('inviteEmailInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); sendEmailInvite(); }
+  });
+
+  // Handle ?join= parameter - auto-switch to invited conversation
+  (async function handleJoinParam() {
+    var joinId = new URLSearchParams(window.location.search).get('join');
+    if (!joinId) return;
+    // Wait for server conversations to load, then switch
+    // Use a short delay + retry to ensure initFromServer has completed
+    var attempts = 0;
+    var tryJoin = async function() {
+      attempts++;
+      // Ensure we have server conversations loaded
+      if (!serverConversations && attempts < 5) {
+        try { serverConversations = await loadConversationsFromServer(); saveConversations(serverConversations); } catch(e) {}
+      }
+      var convs = loadConversations();
+      var found = convs.find(function(c) { return c.id === joinId; });
+      if (found) {
+        switchConversation(joinId);
+        showToast('Joined "' + found.name + '"');
+      } else if (attempts < 5) {
+        setTimeout(tryJoin, 500);
+      } else {
+        showToast('Conversation not found - it may have been removed');
+      }
+    };
+    setTimeout(tryJoin, 500);
+  })();
+
+  function renderParticipantChecklist() {
+    const container = document.getElementById('participantChecklist');
+    const allMembers = [...KNOWN_MEMBERS, ...customParticipants.map(n => getMemberInfo(n))];
+    // Deduplicate
+    const seen = new Set();
+    const unique = allMembers.filter(m => {
+      const key = m.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    container.innerHTML = unique.map(m => `
+      <label class="participant-check">
+        <input type="checkbox" value="${escapeHtml(m.name)}" checked>
+        <div class="pc-avatar ${m.avatarClass}">${m.initial}</div>
+        <div class="pc-info">
+          <div class="pc-name">${escapeHtml(m.name)}</div>
+        </div>
+        <span class="pc-type ${m.type === 'human' ? 'pc-type-human' : 'pc-type-ai'}">${m.type === 'human' ? 'Human' : 'AI'}</span>
+      </label>
+    `).join('');
+  }
+
+  window.addCustomParticipant = function() {
+    const input = document.getElementById('customParticipantName');
+    const name = input.value.trim();
+    if (!name) return;
+    const existing = [...KNOWN_MEMBERS.map(m => m.name.toLowerCase()), ...customParticipants.map(n => n.toLowerCase())];
+    if (existing.includes(name.toLowerCase())) {
+      showToast('Already in list');
+      input.value = '';
+      return;
+    }
+    customParticipants.push(name);
+    input.value = '';
+    renderParticipantChecklist();
+  };
+
+  document.getElementById('newConvName').addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeNewConvModal();
+  });
+
+  document.getElementById('customParticipantName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addCustomParticipant(); }
+    if (e.key === 'Escape') closeNewConvModal();
+  });
+
+  window.createConversation = async function() {
+    const nameInput = document.getElementById('newConvName');
+    const name = nameInput.value.trim();
+    if (!name) { showToast('Enter a conversation name'); return; }
+
+    const checklist = document.getElementById('participantChecklist');
+    const checked = Array.from(checklist.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+    if (checked.length === 0) { showToast('Select at least one participant'); return; }
+
+    try {
+      const resp = await fetch(`${API_URL}/conversations/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+        body: JSON.stringify({ name, participants: checked, type: checked.length <= 2 ? 'direct' : 'group' })
+      });
+      const data = await resp.json();
+      if (!data.ok) { showToast(data.error || 'Failed to create', 'error'); return; }
+
+      // Refresh conversations from server
+      serverConversations = await loadConversationsFromServer();
+      saveConversations(serverConversations);
+      channelMessages[data.conversation.id] = [];
+      closeNewConvModal();
+      renderConvList();
+      switchConversation(data.conversation.id);
+      showToast(`"${name}" created`);
+    } catch(e) {
+      console.error('Create conversation error:', e);
+      showToast('Failed to create conversation', 'error');
+    }
+  };
+
+  // - Manage panel --
+  window.openManagePanel = function() {
+    const conv = getConversation(activeConvId);
+    if (!conv) return;
+    renderManagePanelBody(conv);
+    // Show delete button only for non-default conversations
+    const deleteBtn = document.getElementById('deleteConvBtn');
+    deleteBtn.style.display = conv.isDefault ? 'none' : 'block';
+    document.getElementById('managePanelOverlay').classList.add('visible');
+    document.getElementById('managePanel').classList.add('open');
+  };
+
+  window.deleteConversation = async function() {
+    const conv = getConversation(activeConvId);
+    if (!conv || conv.isDefault) return;
+    if (!confirm(`Delete "${conv.name}"? This cannot be undone.`)) return;
+    try {
+      const resp = await fetch(`${API_URL}/conversations/${encodeURIComponent(activeConvId)}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + TOKEN }
+      });
+      const data = await resp.json();
+      if (!data.ok) { showToast(data.error || 'Failed to delete', 'error'); return; }
+      closeManagePanel();
+      serverConversations = await loadConversationsFromServer();
+      saveConversations(serverConversations);
+      renderConvList();
+      switchConversation('ai-team');
+      showToast(`"${conv.name}" deleted`);
+    } catch(e) {
+      console.error('Delete conversation error:', e);
+      showToast('Failed to delete conversation', 'error');
+    }
+  };
+
+  window.closeManagePanel = function() {
+    document.getElementById('managePanelOverlay').classList.remove('visible');
+    document.getElementById('managePanel').classList.remove('open');
+  };
+
+  function renderManagePanelBody(conv) {
+    const body = document.getElementById('managePanelBody');
+    const participants = conv.participants || [];
+    const currentUser = userRole === 'human' ? 'Jord' : 'AI Agent';
+
+    body.innerHTML = participants.map(name => {
+      const info = getMemberInfo(name);
+      const statusKey = senderToStatusKey(name);
+      const isOnline = statusKey ? (Date.now() - (lastSeen[statusKey] || 0)) < 300000 : false;
+      const canRemove = !conv.isDefault && name.toLowerCase() !== currentUser.toLowerCase();
+      return `
+        <div class="manage-participant" data-name="${escapeHtml(name)}">
+          <div class="mp-avatar ${info.avatarClass}">${info.initial}</div>
+          <div class="mp-info">
+            <div class="mp-name">${escapeHtml(name)}</div>
+            <span class="mp-type ${info.type === 'human' ? 'pc-type-human' : 'pc-type-ai'}">${info.type === 'human' ? 'Human' : 'AI'}</span>
+          </div>
+          <div class="mp-status ${isOnline ? 'online' : ''}"></div>
+          ${canRemove ? `<button class="mp-remove" title="Remove" data-remove-name="${escapeHtml(name)}">&times;</button>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  window.removeParticipant = async function(name) {
+    try {
+      const resp = await fetch(`${API_URL}/conversations/${encodeURIComponent(activeConvId)}/participants/${encodeURIComponent(name)}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + TOKEN }
+      });
+      const data = await resp.json();
+      if (!data.ok) { showToast(data.error || 'Failed to remove', 'error'); return; }
+
+      serverConversations = await loadConversationsFromServer();
+      saveConversations(serverConversations);
+      const conv = getConversation(activeConvId);
+      if (conv) {
+        renderManagePanelBody(conv);
+        renderHeaderParticipants(conv);
+        const count = conv.participants.length;
+        memberCountEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> ${count}`;
+      }
+      showToast(`${name} removed`);
+    } catch(e) {
+      console.error('Remove participant error:', e);
+      showToast('Failed to remove participant', 'error');
+    }
+  };
+
+  // Event delegation for remove buttons in manage panel
+  document.getElementById('managePanelBody').addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('[data-remove-name]');
+    if (removeBtn) removeParticipant(removeBtn.dataset.removeName);
+  });
+
+  // - Add participant modal (from manage panel) --
+  window.openAddParticipantModal = function() {
+    document.getElementById('addParticipantModal').classList.remove('hidden');
+    document.getElementById('addCustomName').value = '';
+    renderAddParticipantChecklist();
+  };
+
+  window.closeAddParticipantModal = function() {
+    document.getElementById('addParticipantModal').classList.add('hidden');
+  };
+
+  function renderAddParticipantChecklist() {
+    const conv = getConversation(activeConvId);
+    if (!conv) return;
+    const existing = (conv.participants || []).map(p => p.toLowerCase());
+    const available = KNOWN_MEMBERS.filter(m => !existing.includes(m.name.toLowerCase()));
+    const container = document.getElementById('addParticipantChecklist');
+    if (available.length === 0) {
+      container.innerHTML = '<p style="font-size:13px;color:var(--text-muted);padding:8px 0;">All known members are already in this conversation.</p>';
+      return;
+    }
+    container.innerHTML = available.map(m => `
+      <label class="participant-check">
+        <input type="checkbox" value="${escapeHtml(m.name)}">
+        <div class="pc-avatar ${m.avatarClass}">${m.initial}</div>
+        <div class="pc-info">
+          <div class="pc-name">${escapeHtml(m.name)}</div>
+        </div>
+        <span class="pc-type ${m.type === 'human' ? 'pc-type-human' : 'pc-type-ai'}">${m.type === 'human' ? 'Human' : 'AI'}</span>
+      </label>
+    `).join('');
+
+    // Auto-add on check
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        if (cb.checked) {
+          addParticipantToConv(cb.value);
+          cb.closest('.participant-check').style.opacity = '0.5';
+          cb.disabled = true;
+        }
+      });
+    });
+  }
+
+  async function addParticipantToConv(name) {
+    try {
+      const resp = await fetch(`${API_URL}/conversations/${encodeURIComponent(activeConvId)}/participants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+        body: JSON.stringify({ name })
+      });
+      const data = await resp.json();
+      if (!data.ok) { showToast(data.error || 'Failed to add', 'error'); return; }
+
+      serverConversations = await loadConversationsFromServer();
+      saveConversations(serverConversations);
+      const conv = getConversation(activeConvId);
+      if (conv) {
+        renderManagePanelBody(conv);
+        renderHeaderParticipants(conv);
+        const count = conv.participants.length;
+        memberCountEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> ${count}`;
+      }
+      showToast(`${name} added`);
+    } catch(e) {
+      console.error('Add participant error:', e);
+      showToast('Failed to add participant', 'error');
+    }
+  }
+
+  window.addCustomToConversation = async function() {
+    const input = document.getElementById('addCustomName');
+    const name = input.value.trim();
+    if (!name) return;
+    await addParticipantToConv(name);
+    input.value = '';
+    renderAddParticipantChecklist();
+  };
+
+  document.getElementById('addCustomName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addCustomToConversation(); }
+    if (e.key === 'Escape') closeAddParticipantModal();
+  });
+
+  // - Toast --
+  function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.toggle('toast-error', type === 'error');
+    toast.style.opacity = '1';
+    const duration = type === 'error' ? 4000 : 2000;
+    setTimeout(() => { toast.style.opacity = '0'; toast.classList.remove('toast-error'); }, duration);
+  }
+
+  // - Migrate old data --
+  // If user had old pyonair-channels format, migrate to new conversations format
+  (function migrateOldData() {
+    const oldChannels = localStorage.getItem('pyonair-channels');
+    const newConvs = localStorage.getItem('pyonair-conversations');
+    if (oldChannels && !newConvs) {
+      try {
+        const channels = JSON.parse(oldChannels);
+        const migrated = channels.map(ch => ({
+          id: ch.id,
+          name: ch.name,
+          type: 'group',
+          participants: ch.id === 'ai-team' ? ['Pyonair AI', 'Clarity', 'Between', 'Jord', 'Catalyst'] :
+                        ch.id === 'general' ? ['Pyonair AI', 'Clarity', 'Between', 'Jord', 'Ronen'] :
+                        ['Jord'],
+          isDefault: ch.isDefault || false,
+          isWs: ch.isWs || false,
+          lastActivity: Math.floor(Date.now() / 1000),
+          icon: 'group'
+        }));
+        localStorage.setItem('pyonair-conversations', JSON.stringify(migrated));
+      } catch(e) {}
+    }
+  })();
+
+})();
+</script>
+</body>
+</html>
