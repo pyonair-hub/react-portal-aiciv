@@ -1,7 +1,11 @@
 import { AUTH_TOKEN_KEY } from '../utils/constants'
 
-function getToken(): string | null {
+export function getAuthToken(): string | null {
   return localStorage.getItem(AUTH_TOKEN_KEY)
+}
+
+function getToken(): string | null {
+  return getAuthToken()
 }
 
 function getBaseUrl(): string {

@@ -67,7 +67,7 @@ export function StatusView() {
       <h2 className="status-title">Status Dashboard</h2>
       <div className="status-grid">
         <div className="status-card">
-          <h3 className="status-card-title">CIV Identity</h3>
+          <h3 className="status-card-title">AI Identity</h3>
           <div className="status-card-body">
             <div className="status-row">
               <span className="status-label">Name</span>
@@ -126,7 +126,7 @@ export function StatusView() {
         </div>
 
         <div className="status-card">
-          <h3 className="status-card-title">Claude Auth</h3>
+          <h3 className="status-card-title">Claude Authorization</h3>
           <div className="status-card-body">
             <div className="status-row">
               <span className="status-label">Status</span>

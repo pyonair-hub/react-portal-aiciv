@@ -18,6 +18,8 @@ interface ChatInputProps {
 
 export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
   const [text, setText] = useState('')
+  const textRef = useRef(text)
+  textRef.current = text
   const [slashCommands, setSlashCommands] = useState<SlashCommand[]>([])
   const [showSlash, setShowSlash] = useState(false)
   const [slashIndex, setSlashIndex] = useState(0)
@@ -149,14 +151,14 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
 
   const stopAndSend = () => {
     stop()
-    // Small delay to let final transcript sync
+    // Small delay to let final transcript sync, use ref for latest text
     setTimeout(() => {
-      const trimmed = text.trim()
+      const trimmed = textRef.current.trim()
       if (trimmed) {
         onSend(trimmed)
         setText('')
       }
-    }, 200)
+    }, 300)
   }
 
   const cancelRecording = () => {

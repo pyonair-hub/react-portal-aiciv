@@ -43,7 +43,6 @@ const SECTION_1: NavItem[] = [
   { to: '/teamchat', iconKey: 'teamchat', label: 'Team AI Chat' },
   { to: '/calendar', iconKey: 'calendar', label: 'Calendar' },
   { to: '/mail', iconKey: 'mail', label: 'Agent Mail' },
-  { to: '/bookmarks', iconKey: 'hub', label: 'Hub' },
   { to: '/settings', iconKey: 'settings', label: 'Settings' },
   { to: '/status', iconKey: 'status', label: 'Status' },
   { to: '/guide', iconKey: 'guide', label: 'Guide' },
@@ -53,7 +52,6 @@ const SECTION_2: NavItem[] = [
   { to: '/teams', iconKey: 'liveview', label: 'Live View' },
   { to: '/context', iconKey: 'memory', label: 'Memory' },
   { to: '/docs', iconKey: 'docs', label: 'Documents' },
-  { to: '/sheets', iconKey: 'data', label: 'Data' },
 ]
 
 const SECTION_3_ADMIN: NavItem[] = [

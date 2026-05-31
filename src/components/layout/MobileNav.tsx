@@ -48,14 +48,12 @@ const PRIMARY_ITEMS: NavItem[] = [
 
 /* More menu: exact order per Jord's directive (no admin on mobile) */
 const MORE_ITEMS: NavItem[] = [
-  { to: '/bookmarks', iconKey: 'hub', label: 'Hub' },
   { to: '/settings', iconKey: 'settings', label: 'Settings' },
   { to: '/status', iconKey: 'status', label: 'Status' },
   { to: '/guide', iconKey: 'guide', label: 'Guide' },
   { to: '/teams', iconKey: 'liveview', label: 'Live View' },
   { to: '/context', iconKey: 'memory', label: 'Memory' },
   { to: '/docs', iconKey: 'docs', label: 'Documents' },
-  { to: '/sheets', iconKey: 'data', label: 'Data' },
 ]
 
 export function MobileNav() {
