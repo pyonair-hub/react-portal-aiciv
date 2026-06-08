@@ -48,10 +48,10 @@ export function Sidebar() {
         ))}
       </nav>
       <div className="sidebar-footer">
-        <a href="https://ai-civ.com" target="_blank" rel="noopener noreferrer" className="sidebar-powered">
-          Powered by <strong>AiCIV</strong>
+        <a href="https://pyonair.com" target="_blank" rel="noopener noreferrer" className="sidebar-powered">
+          Powered by <strong>Pyonair</strong>
         </a>
-        <a href="https://ai-civ.com/blog" target="_blank" rel="noopener noreferrer" className="sidebar-blog-link">
+        <a href="https://pyonair.com/blog" target="_blank" rel="noopener noreferrer" className="sidebar-blog-link">
           Chronicles
         </a>
       </div>

@@ -74,7 +74,7 @@ export function SettingsView() {
       </section>
 
       <section className="settings-section">
-        <h3>BOOP</h3>
+        <h3>Health Check</h3>
         <div className="settings-row">
           <span className="settings-label">Background tasks</span>
           <button
@@ -102,11 +102,11 @@ export function SettingsView() {
       <section className="settings-section">
         <h3>Resources</h3>
         <div className="settings-links">
-          <a href="https://ai-civ.com" target="_blank" rel="noopener noreferrer" className="settings-link">
-            AiCIV Platform
+          <a href="https://pyonair.com" target="_blank" rel="noopener noreferrer" className="settings-link">
+            Pyonair
           </a>
-          <a href="https://ai-civ.com/blog" target="_blank" rel="noopener noreferrer" className="settings-link">
-            AiCIV Chronicles (Blog)
+          <a href="https://pyonair.com/blog" target="_blank" rel="noopener noreferrer" className="settings-link">
+            Pyonair Blog
           </a>
         </div>
       </section>

@@ -186,7 +186,7 @@ export function SettingsView() {
       </section>
 
       <section className="settings-section">
-        <h3>BOOP</h3>
+        <h3>Health Check</h3>
         <div className="settings-row">
           <span className="settings-label">Background tasks</span>
           <button
