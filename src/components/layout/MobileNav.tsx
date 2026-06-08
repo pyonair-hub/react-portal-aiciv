@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useMailStore } from '../../stores/mailStore'
 import { cn } from '../../utils/cn'
@@ -34,6 +34,7 @@ const ICONS: Record<string, ReactNode> = {
   alerts: icon2('M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9', 'M13.73 21a2 2 0 0 1-3.46 0'),
   more: icon2('M3 12h18', 'M3 6h18', 'M3 18h18'),
   close: icon2('M18 6L6 18', 'M6 6l12 12'),
+  install: icon2('M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M7 10l5 5 5-5', 'M12 15V3'),
 }
 
 interface NavItem { to: string; iconKey: string; label: string }
@@ -56,10 +57,58 @@ const MORE_ITEMS: NavItem[] = [
   { to: '/docs', iconKey: 'docs', label: 'Documents' },
 ]
 
+function isStandalone(): boolean {
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    // iOS Safari
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true
+  )
+}
+
 export function MobileNav() {
   const unreadCount = useMailStore(s => s.unreadCount)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+  const [installed, setInstalled] = useState(() => isStandalone())
   const navigate = useNavigate()
+
+  // Capture the install prompt so we can trigger it from the More sheet.
+  // The sidebar (which hosts the desktop install banner) is hidden on mobile,
+  // so mobile needs its own install entry point.
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+    }
+    const onInstalled = () => {
+      setInstalled(true)
+      setDeferredPrompt(null)
+    }
+    window.addEventListener('beforeinstallprompt', onPrompt)
+    window.addEventListener('appinstalled', onInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
+
+  const handleInstall = useCallback(async () => {
+    setMoreOpen(false)
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const result = await deferredPrompt.userChoice
+      setDeferredPrompt(null)
+      if (result?.outcome === 'accepted') setInstalled(true)
+      return
+    }
+    // No native prompt (iOS, or already dismissed): guide the user.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    if (isIOS) {
+      alert('To install: tap the Share button, then "Add to Home Screen".')
+    } else {
+      alert('To install: open the browser menu, then "Install app" or "Add to Home Screen".')
+    }
+  }, [deferredPrompt])
 
   const handleMoreItem = useCallback((to: string) => {
     navigate(to)
@@ -89,6 +138,16 @@ export function MobileNav() {
                 <span className="mobile-more-label">{item.label}</span>
               </button>
             ))}
+            {!installed && (
+              <button
+                className="mobile-more-item"
+                onClick={handleInstall}
+                type="button"
+              >
+                <span className="mobile-more-icon">{ICONS.install}</span>
+                <span className="mobile-more-label">Install App</span>
+              </button>
+            )}
           </div>
         </div>
       )}

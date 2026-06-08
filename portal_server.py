@@ -38,6 +38,40 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 if os.environ.get("HOME", "/root") == "/root" and os.path.isdir("/home/aiciv"):
     os.environ["HOME"] = "/home/aiciv"
 
+# Load environment from .env so keys (e.g. DEEPGRAM_API_KEY for the microphone /
+# voice-transcription endpoint) are always present, regardless of how the process
+# was launched. Without this, mic transcription returns 500 "not configured"
+# whenever the launcher did not pre-export the key. Existing process env wins.
+def _load_env_file() -> None:
+    candidates = [
+        Path("/home/aiciv/.env"),
+        Path(os.environ.get("HOME", "/home/aiciv")) / ".env",
+        Path(__file__).parent / ".env",
+    ]
+    seen = set()
+    for env_path in candidates:
+        try:
+            rp = env_path.resolve()
+        except OSError:
+            continue
+        if rp in seen or not env_path.is_file():
+            continue
+        seen.add(rp)
+        try:
+            for line in env_path.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = val
+        except OSError:
+            continue
+
+_load_env_file()
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
