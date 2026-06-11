@@ -4,6 +4,28 @@ import { chatWs } from '../api/websocket'
 import type { ChatMessage } from '../types/chat'
 
 let wsCleanup: (() => void) | null = null
+let wsOpenCleanup: (() => void) | null = null
+
+// Merge a fresh history snapshot into the current message list without
+// dropping optimistic local-* messages and without creating duplicates.
+// Server messages win on id collisions. Local optimistic user messages are
+// kept only if the server snapshot does not already contain an equivalent
+// (same role + text) message.
+function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
+  const byId = new Map<string, ChatMessage>()
+  for (const m of incoming) byId.set(m.id, m)
+
+  // Keep any still-pending local optimistic messages not yet echoed by server.
+  for (const m of current) {
+    if (!m.id.startsWith('local-')) continue
+    const echoed = incoming.some(s => s.role === m.role && s.text === m.text)
+    if (!echoed) byId.set(m.id, m)
+  }
+
+  // Order by timestamp so a re-sync keeps chronological order; fall back to
+  // insertion order for equal timestamps.
+  return Array.from(byId.values()).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+}
 
 interface ChatState {
   messages: ChatMessage[]
@@ -12,6 +34,7 @@ interface ChatState {
   wsConnected: boolean
   error: string | null
   loadHistory: () => Promise<void>
+  resync: () => Promise<void>
   send: (text: string) => Promise<void>
   react: (msgId: string, emoji: string, msgText: string, msgRole: 'user' | 'assistant') => Promise<void>
   connectWs: () => void
@@ -33,6 +56,20 @@ export const useChatStore = create<ChatState>((set) => ({
       set({ messages: msgs, loading: false })
     } catch (e) {
       set({ loading: false, error: e instanceof Error ? e.message : 'Failed to load chat' })
+    }
+  },
+
+  // Non-destructive re-fetch used after a WS reconnect or tab re-focus.
+  // Recovers any assistant replies that were pushed while the socket was down,
+  // WITHOUT clearing the screen or showing the loading spinner. This is the
+  // core fix for "new prompts stop showing up until you refresh the page".
+  resync: async () => {
+    try {
+      const data = await fetchChatHistory(200)
+      const msgs = data.messages || []
+      set(s => ({ messages: mergeMessages(s.messages, msgs) }))
+    } catch (e) {
+      console.error('[chat] resync failed:', e)
     }
   },
 
@@ -72,6 +109,19 @@ export const useChatStore = create<ChatState>((set) => ({
       wsCleanup()
       wsCleanup = null
     }
+    if (wsOpenCleanup) {
+      wsOpenCleanup()
+      wsOpenCleanup = null
+    }
+
+    // When the socket (re)opens after having been connected before, we may
+    // have missed live pushes. Re-sync history non-destructively to recover
+    // them — this is what previously required a manual page refresh.
+    wsOpenCleanup = chatWs.onOpen((wasReconnect) => {
+      if (wasReconnect) {
+        void useChatStore.getState().resync()
+      }
+    })
 
     chatWs.connect()
     set({ wsConnected: true })
@@ -108,6 +158,10 @@ export const useChatStore = create<ChatState>((set) => ({
     if (wsCleanup) {
       wsCleanup()
       wsCleanup = null
+    }
+    if (wsOpenCleanup) {
+      wsOpenCleanup()
+      wsOpenCleanup = null
     }
     chatWs.disconnect()
     set({ wsConnected: false })

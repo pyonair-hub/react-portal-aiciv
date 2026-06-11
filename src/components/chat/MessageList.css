@@ -1,6 +1,14 @@
 .msg-list {
   flex: 1;
+  /* min-height:0 lets this flex item shrink below its content size so it
+     becomes the scroll container (scroll up to read older replies) instead
+     of pushing the page / input bar. */
+  min-height: 0;
   overflow-y: auto;
+  /* Keep momentum scrolling on iOS and prevent the page behind from
+     scroll-chaining when the list hits its edge (cursor-lock symptom). */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 16px;
 }
 

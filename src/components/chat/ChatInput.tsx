@@ -26,7 +26,7 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const quickfirePills = useSettingsStore(s => s.quickfirePills)
-  const { isListening, isSupported, transcript, start, stop } = useSpeechRecognition()
+  const { isListening, isSupported, transcript, error: micError, start, stop } = useSpeechRecognition()
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -212,6 +212,9 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {micError && (
+        <div className="chat-mic-error" role="status">{micError}</div>
+      )}
       {quickfirePills.length > 0 && (
         <div className="chat-pills">
           {quickfirePills.map((pill) => (

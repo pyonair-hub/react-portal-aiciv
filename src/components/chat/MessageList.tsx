@@ -11,14 +11,17 @@ interface MessageListProps {
 }
 
 export function MessageList({ messages, onReact, highlightIds, onPreviewArtifact }: MessageListProps) {
-  const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const autoScrollRef = useRef(true)
 
   useEffect(() => {
-    if (autoScrollRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
+    if (!autoScrollRef.current) return
+    const el = containerRef.current
+    if (!el) return
+    // Scroll the message container itself (not scrollIntoView, which can
+    // scroll ancestor/page elements and steal focus from the input on
+    // mobile). This keeps the textarea cursor stable while new replies arrive.
+    el.scrollTop = el.scrollHeight
   }, [messages])
 
   const handleScroll = () => {
@@ -40,7 +43,6 @@ export function MessageList({ messages, onReact, highlightIds, onPreviewArtifact
             onPreviewArtifact={onPreviewArtifact}
           />
         ))}
-        <div ref={bottomRef} />
       </div>
     </div>
   )

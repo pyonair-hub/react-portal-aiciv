@@ -14,6 +14,7 @@ export function ChatView() {
   const loading = useChatStore(s => s.loading)
   const sending = useChatStore(s => s.sending)
   const loadHistory = useChatStore(s => s.loadHistory)
+  const resync = useChatStore(s => s.resync)
   const send = useChatStore(s => s.send)
   const react = useChatStore(s => s.react)
   const connectWs = useChatStore(s => s.connectWs)
@@ -39,6 +40,22 @@ export function ChatView() {
     connectWs()
     return () => disconnectWs()
   }, [loadHistory, connectWs, disconnectWs])
+
+  // Safety net for "prompts stop showing up": if the tab was backgrounded or
+  // the device slept, the WebSocket may have silently missed pushes. On
+  // re-focus / visibility change, non-destructively re-sync so the user never
+  // has to manually refresh the page to see replies.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void resync()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [resync])
 
   const handleUpload = async (file: File) => {
     try {

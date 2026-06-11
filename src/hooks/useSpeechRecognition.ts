@@ -5,6 +5,7 @@ interface SpeechRecognitionHook {
   isListening: boolean
   isSupported: boolean
   transcript: string
+  error: string | null
   start: () => void
   stop: () => void
 }
@@ -17,6 +18,7 @@ interface SpeechRecognitionHook {
 export function useSpeechRecognition(): SpeechRecognitionHook {
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
@@ -32,19 +34,28 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
         headers: { 'Content-Type': blob.type || 'audio/webm' },
         body: blob,
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        // Surface backend failures (e.g. DEEPGRAM_API_KEY not configured on
+        // this container) instead of failing silently, so a broken mic is
+        // diagnosable rather than looking like the button does nothing.
+        setError('Voice transcription is unavailable right now.')
+        return
+      }
       const data = await res.json()
       if (data.transcript) {
         setTranscript(data.transcript)
+      } else if (data.error) {
+        setError('Voice transcription is unavailable right now.')
       }
     } catch {
-      // Silent fail — transcript stays empty
+      setError('Voice transcription failed. Check your connection.')
     }
   }, [])
 
   const start = useCallback(async () => {
     chunksRef.current = []
     setTranscript('')
+    setError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
@@ -79,6 +90,7 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
       setIsListening(true)
     } catch {
       setIsListening(false)
+      setError('Microphone access was blocked. Allow mic permission and retry.')
     }
   }, [transcribe])
 
@@ -90,5 +102,5 @@ export function useSpeechRecognition(): SpeechRecognitionHook {
     setIsListening(false)
   }, [])
 
-  return { isListening, isSupported, transcript, start, stop }
+  return { isListening, isSupported, transcript, error, start, stop }
 }
