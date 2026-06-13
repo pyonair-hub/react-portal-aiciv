@@ -37,6 +37,46 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
       .catch(() => {})
   }, [])
 
+  // Auto-focus the textarea on mount and whenever the user returns to the tab
+  // (tab switch, window re-focus). This is EVENT-DRIVEN, not a polling/interval
+  // re-apply — it fires once per real user-intent event (mount, focus,
+  // visibilitychange→visible), so the cursor lands in the input without
+  // hijacking focus while the user is reading history or filling another field.
+  useEffect(() => {
+    // Focus on initial mount.
+    textareaRef.current?.focus()
+
+    const refocusOnReturn = () => {
+      // Only steal focus back if nothing else is focused (e.g. user is not
+      // mid-interaction with a button/link). document.body / null means the
+      // page itself has focus → safe to land the cursor in the message box.
+      const active = document.activeElement
+      const nothingFocused = !active || active === document.body
+      if (document.visibilityState === 'visible' && nothingFocused) {
+        textareaRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('visibilitychange', refocusOnReturn)
+    window.addEventListener('focus', refocusOnReturn)
+    return () => {
+      document.removeEventListener('visibilitychange', refocusOnReturn)
+      window.removeEventListener('focus', refocusOnReturn)
+    }
+  }, [])
+
+  // Restore focus to the input after a send completes (sending: true → false).
+  // We deliberately keep the textarea ENABLED while sending (see render) so the
+  // cursor never leaves; this is a belt-and-braces re-focus for the case where
+  // a quickfire pill or programmatic send moved focus elsewhere.
+  const wasSending = useRef(sending)
+  useEffect(() => {
+    if (wasSending.current && !sending) {
+      textareaRef.current?.focus()
+    }
+    wasSending.current = sending
+  }, [sending])
+
   // Sync speech transcript into text field — always, even after stop
   useEffect(() => {
     if (transcript) {
@@ -317,7 +357,17 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
                 onInput={handleInput}
                 onPaste={handlePaste}
                 rows={1}
-                disabled={sending}
+                /* Native spell-check + suggestions. spellCheck enables the red
+                   underline AND the browser's right-click correction menu. We do
+                   NOT intercept onContextMenu, so the native suggestion list shows. */
+                spellCheck={true}
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                /* Keep the textarea ENABLED while sending so it never loses
+                   focus / the cursor (a `disabled` textarea blurs and the cursor
+                   jumps out). handleSubmit already guards on `sending`, so the
+                   user can keep typing the next message without interruption. */
+                aria-busy={sending}
               />
             </div>
             {isSupported && (
