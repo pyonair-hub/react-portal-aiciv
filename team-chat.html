@@ -2116,6 +2116,8 @@
   let dgSocket = null;
   let isRecording = false;
   let voiceFinalTranscript = '';
+  let dgKeepAlive = null;        // interval that pings Deepgram so it doesn't close on a pause
+  let dgReconnectAttempts = 0;   // bounded auto-reconnect on a transient mid-session drop
   const voiceTextEl = document.getElementById('voiceText');
   const TARGET_SAMPLE_RATE = 16000;
 
@@ -2166,31 +2168,55 @@
 
     isRecording = true;
     voiceFinalTranscript = '';
+    dgReconnectAttempts = 0;
     micBtn.classList.add('recording');
     voicePreview.classList.add('active');
     voiceTextEl.textContent = 'Listening...';
 
+    openDgSocket(dgKey);
+  }
+
+  // Open (or re-open) the Deepgram streaming socket. Extracted so a transient
+  // mid-session drop can transparently reconnect WITHOUT the user noticing —
+  // this is the fix for "drops/garbles words" and "Listening runs but nothing
+  // transcribes": the old code had no KeepAlive (Deepgram closes after ~10s of
+  // no audio, e.g. a natural pause) and no reconnect (any blip ended the
+  // session, forcing the user to speak fast/continuously).
+  function openDgSocket(dgKey) {
     const url = `wss://api.deepgram.com/v1/listen?model=nova-3&language=en&smart_format=true&interim_results=true&utterance_end_ms=1500&encoding=linear16&sample_rate=${TARGET_SAMPLE_RATE}&channels=1`;
     dgSocket = new WebSocket(url, ['token', dgKey]);
 
     dgSocket.onopen = () => {
-      const audioCtxVoice = new (window.AudioContext || window.webkitAudioContext)();
-      const nativeRate = audioCtxVoice.sampleRate;
-      const source = audioCtxVoice.createMediaStreamSource(voiceStream);
-      const bufferSize = 4096;
-      const processor = audioCtxVoice.createScriptProcessor(bufferSize, 1, 1);
-      source.connect(processor);
-      processor.connect(audioCtxVoice.destination);
-      processor.onaudioprocess = (e) => {
+      dgReconnectAttempts = 0; // a successful open clears the backoff
+      // KEEPALIVE: ping every 5s so Deepgram never closes the stream during a
+      // natural speaking pause (it auto-closes after ~10-12s with no audio).
+      if (dgKeepAlive) clearInterval(dgKeepAlive);
+      dgKeepAlive = setInterval(() => {
         if (dgSocket && dgSocket.readyState === WebSocket.OPEN) {
-          const input = e.inputBuffer.getChannelData(0);
-          const resampled = resampleTo16k(input, nativeRate);
-          dgSocket.send(resampled.buffer);
+          try { dgSocket.send(JSON.stringify({ type: 'KeepAlive' })); } catch (_) {}
         }
-      };
-      micBtn._audioCtx = audioCtxVoice;
-      micBtn._processor = processor;
-      micBtn._source = source;
+      }, 5000);
+
+      // Reuse one audio pipeline across reconnects (don't rebuild on reconnect).
+      if (!micBtn._audioCtx) {
+        const audioCtxVoice = new (window.AudioContext || window.webkitAudioContext)();
+        const nativeRate = audioCtxVoice.sampleRate;
+        const source = audioCtxVoice.createMediaStreamSource(voiceStream);
+        const bufferSize = 4096;
+        const processor = audioCtxVoice.createScriptProcessor(bufferSize, 1, 1);
+        source.connect(processor);
+        processor.connect(audioCtxVoice.destination);
+        processor.onaudioprocess = (e) => {
+          if (dgSocket && dgSocket.readyState === WebSocket.OPEN) {
+            const input = e.inputBuffer.getChannelData(0);
+            const resampled = resampleTo16k(input, nativeRate);
+            dgSocket.send(resampled.buffer);
+          }
+        };
+        micBtn._audioCtx = audioCtxVoice;
+        micBtn._processor = processor;
+        micBtn._source = source;
+      }
     };
 
     dgSocket.onmessage = (e) => {
@@ -2207,35 +2233,61 @@
     };
 
     dgSocket.onclose = (ev) => {
-      // Code 1008 = policy violation (bad API key), 1006 = abnormal (connection failed)
-      if (ev.code === 1008 || ev.code === 1006) {
-        console.error('Deepgram connection failed (code ' + ev.code + '). API key may be invalid.');
+      if (dgKeepAlive) { clearInterval(dgKeepAlive); dgKeepAlive = null; }
+
+      // Code 1008 = policy violation (bad/expired API key) — fatal, do NOT retry.
+      if (ev.code === 1008) {
+        console.error('Deepgram auth rejected (1008). API key invalid/expired.');
         voiceTextEl.textContent = 'Voice unavailable - API key issue';
         setTimeout(() => { voicePreview.classList.remove('active'); }, 2000);
         isRecording = false;
         micBtn.classList.remove('recording');
         return;
       }
+
+      // If the user is still recording and the drop was transient (1006/1011/
+      // etc.), transparently reconnect with bounded backoff so speech keeps
+      // transcribing without the user having to stop and restart.
+      if (isRecording && dgReconnectAttempts < 3) {
+        dgReconnectAttempts++;
+        console.warn('Deepgram dropped (code ' + ev.code + '); reconnecting #' + dgReconnectAttempts);
+        setTimeout(async () => {
+          if (!isRecording) return;
+          try {
+            const resp = await fetch(`${location.origin}/api/deepgram-token`);
+            const data = await resp.json();
+            openDgSocket(data.key);
+          } catch (err) {
+            console.error('Deepgram reconnect token error:', err);
+          }
+        }, 400 * dgReconnectAttempts);
+        return;
+      }
+
+      // Final close (user stopped, or reconnect budget exhausted): flush text.
       if (voiceFinalTranscript.trim()) {
         sendMessage(voiceFinalTranscript.trim());
         voiceFinalTranscript = '';
-        voicePreview.classList.remove('active');
-      } else {
-        voicePreview.classList.remove('active');
       }
+      voicePreview.classList.remove('active');
     };
 
-    dgSocket.onerror = (err) => { console.error('Deepgram WebSocket error:', err); stopRecording(); };
+    dgSocket.onerror = (err) => {
+      console.error('Deepgram WebSocket error:', err);
+      // Let onclose handle reconnect/cleanup; don't hard-stop on a transient error.
+    };
   }
 
   window.stopRecording = function() {
-    isRecording = false;
+    isRecording = false;  // set FIRST so onclose does not auto-reconnect
     micBtn.classList.remove('recording');
+    if (dgKeepAlive) { clearInterval(dgKeepAlive); dgKeepAlive = null; }
     if (micBtn._processor) { micBtn._processor.disconnect(); micBtn._processor = null; }
     if (micBtn._source) { micBtn._source.disconnect(); micBtn._source = null; }
     if (micBtn._audioCtx) { micBtn._audioCtx.close().catch(function(){}); micBtn._audioCtx = null; }
     if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; }
     if (dgSocket && dgSocket.readyState === WebSocket.OPEN) {
+      // CloseStream tells Deepgram to flush + return the final transcript.
       dgSocket.send(JSON.stringify({ type: 'CloseStream' }));
     }
     dgSocket = null;
