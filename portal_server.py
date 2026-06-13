@@ -58,6 +58,15 @@ def _load_env_file() -> None:
             continue
         seen.add(rp)
         try:
+            # Collect ALL key=value pairs first, then apply LAST-non-empty wins.
+            # Shell `source` uses last-wins, and operators expect that: if a
+            # duplicate DEEPGRAM_API_KEY (or any key) is appended to .env — which
+            # has happened repeatedly and silently swapped in a DEAD key under
+            # the old first-wins parser, causing mid-session INVALID_AUTH (502)
+            # on voice transcription — we must honor the LAST non-empty value so
+            # the freshly-set key wins. We only set keys not already in the live
+            # process env (real env still overrides the file).
+            file_pairs: dict[str, str] = {}
             for line in env_path.read_text().splitlines():
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:
@@ -65,7 +74,13 @@ def _load_env_file() -> None:
                 key, val = line.split("=", 1)
                 key = key.strip()
                 val = val.strip().strip('"').strip("'")
-                if key and key not in os.environ:
+                if not key:
+                    continue
+                # Last non-empty occurrence wins (matches shell `source`).
+                if val or key not in file_pairs:
+                    file_pairs[key] = val
+            for key, val in file_pairs.items():
+                if key not in os.environ:
                     os.environ[key] = val
         except OSError:
             continue
@@ -79,7 +94,29 @@ SCRIPT_DIR = Path(__file__).parent
 TOKEN_FILE = SCRIPT_DIR / ".portal-token"
 PORTAL_HTML = SCRIPT_DIR / "portal.html"
 PORTAL_PB_HTML = SCRIPT_DIR / "portal-pb-styled.html"
-REACT_DIST = SCRIPT_DIR / "react-portal" / "dist"
+
+def _resolve_react_dist() -> Path:
+    """Pick the canonical built portal directory.
+
+    History: the build output + all brand assets (logos, icons, manifest,
+    sw.js, the current Pyonair `index-PYO2024` bundle) live in the ROOT `dist/`.
+    The legacy `react-portal/dist/` is a stale pre-rebrand build that is missing
+    every static asset (so /pyonair-logo.svg, /icon-192.png, etc. fell through
+    the SPA catch-all and returned the HTML shell with a fake 200 — the
+    "broken image" bug). Prefer ROOT `dist/` whenever it contains the real
+    build, and only fall back to react-portal/dist if root isn't built yet.
+    In deploys where `react-portal/dist` is symlinked to `dist/`, both resolve
+    to the same place, so this is safe everywhere."""
+    root_dist = SCRIPT_DIR / "dist"
+    legacy_dist = SCRIPT_DIR / "react-portal" / "dist"
+    # Root is canonical if it has the brand assets the app actually requests.
+    if (root_dist / "index.html").exists() and (root_dist / "pyonair-logo.svg").exists():
+        return root_dist
+    if (legacy_dist / "index.html").exists():
+        return legacy_dist
+    return root_dist
+
+REACT_DIST = _resolve_react_dist()
 START_TIME = time.time()
 PORTAL_VERSION = "1.0.1"
 RELEASE_NOTES_FILE = SCRIPT_DIR / "release_notes.json"
@@ -930,17 +967,17 @@ async def favicon(request: Request):
     return Response(status_code=204)
 
 async def favicon_png(request: Request):
-    """Serve 32px favicon PNG."""
-    png = SCRIPT_DIR / "favicon-32.png"
-    if png.exists():
-        return FileResponse(str(png), media_type="image/png")
+    """Serve 32px favicon PNG (from built dist/, falling back to repo root)."""
+    for png in (REACT_DIST / "favicon-32.png", SCRIPT_DIR / "favicon-32.png"):
+        if png.exists():
+            return FileResponse(str(png), media_type="image/png")
     return Response(status_code=204)
 
 async def apple_touch_icon(request: Request):
-    """Serve Apple touch icon."""
-    icon = SCRIPT_DIR / "apple-touch-icon.png"
-    if icon.exists():
-        return FileResponse(str(icon), media_type="image/png")
+    """Serve Apple touch icon (from built dist/, falling back to repo root)."""
+    for icon in (REACT_DIST / "apple-touch-icon.png", SCRIPT_DIR / "apple-touch-icon.png"):
+        if icon.exists():
+            return FileResponse(str(icon), media_type="image/png")
     return Response(status_code=204)
 
 # Routes
@@ -7808,9 +7845,13 @@ async def api_deepgram_token(request: Request) -> JSONResponse:
 async def api_branding(request: Request) -> JSONResponse:
     """Return portal branding config (logo, name, colors)."""
     return JSONResponse({
-        "logo": "/pyonair-logo.svg",
-        "logo_dark": "/pyonair-logo-white.svg",
+        # Real Pyonair wordmark PNGs (light = dark text for white bg,
+        # dark = white text for dark bg). The SVGs were 297-byte placeholders.
+        "logo": "/pyonair-logo-light.png",
+        "logo_url": "/pyonair-logo-light.png",
+        "logo_dark": "/pyonair-logo-dark.png",
         "name": "Pyonair",
+        "platform": "Pyonair",
         "accent": "#E63946",
     })
 

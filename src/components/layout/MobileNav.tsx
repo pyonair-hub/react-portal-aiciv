@@ -92,8 +92,10 @@ export function MobileNav() {
     }
   }, [])
 
-  const handleInstall = useCallback(async () => {
+  const handleAddShortcut = useCallback(async () => {
     setMoreOpen(false)
+    // Responsive web portal — this only adds a home-screen SHORTCUT, it does
+    // not install a packaged app. Honest "add to home screen" language.
     if (deferredPrompt) {
       deferredPrompt.prompt()
       const result = await deferredPrompt.userChoice
@@ -104,9 +106,9 @@ export function MobileNav() {
     // No native prompt (iOS, or already dismissed): guide the user.
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     if (isIOS) {
-      alert('To install: tap the Share button, then "Add to Home Screen".')
+      alert('To add a shortcut: tap the Share button, then "Add to Home Screen".')
     } else {
-      alert('To install: open the browser menu, then "Install app" or "Add to Home Screen".')
+      alert('To add a shortcut: open the browser menu, then "Add to Home Screen".')
     }
   }, [deferredPrompt])
 
@@ -141,11 +143,11 @@ export function MobileNav() {
             {!installed && (
               <button
                 className="mobile-more-item"
-                onClick={handleInstall}
+                onClick={handleAddShortcut}
                 type="button"
               >
                 <span className="mobile-more-icon">{ICONS.install}</span>
-                <span className="mobile-more-label">Install App</span>
+                <span className="mobile-more-label">Add to home screen</span>
               </button>
             )}
           </div>

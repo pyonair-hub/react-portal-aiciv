@@ -58,7 +58,10 @@ interface Branding {
 export function Header() {
   const { civName, status } = useIdentityStore()
   const [ctx, setCtx] = useState<ContextSnapshot | null>(null)
-  const [branding, setBranding] = useState<Branding>({ display_name: '', logo_url: '/pyonair-logo.svg', platform: 'Pyonair' })
+  // Real Pyonair wordmark (red dot + "Pyonair") on transparent/white bg. The
+  // server now serves root dist/ where this asset actually exists, so the
+  // header shows the real logo instead of a broken-image / page-shell.
+  const [branding, setBranding] = useState<Branding>({ display_name: '', logo_url: '/pyonair-logo-light.png', platform: 'Pyonair' })
 
   const fetchCtx = useCallback(async () => {
     try {

@@ -85,19 +85,23 @@ export function Sidebar() {
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
-  const handleInstall = async () => {
+  const handleAddShortcut = async () => {
+    // This is a responsive web portal (not a packaged app). The native
+    // beforeinstallprompt, when available, only adds a home-screen SHORTCUT to
+    // the web portal — so we use honest "add to home screen" language rather
+    // than claiming "Install App".
     if (deferredPrompt) {
       deferredPrompt.prompt()
       const result = await deferredPrompt.userChoice
       setDeferredPrompt(null)
       if (result.outcome === 'accepted') dismissInstall()
     } else {
-      // Fallback: guide user to browser's native install
+      // Fallback: guide the user to add a home-screen shortcut.
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
       if (isIOS) {
-        alert('To install: tap the Share button in Safari, then "Add to Home Screen"')
+        alert('To add a shortcut: tap the Share button in Safari, then "Add to Home Screen".')
       } else {
-        alert('To install: open the browser menu (three dots) and select "Install app" or "Add to Home Screen"')
+        alert('To add a shortcut: open the browser menu (three dots) and select "Add to Home Screen".')
       }
     }
   }
@@ -147,10 +151,10 @@ export function Sidebar() {
       {!installDismissed && (
         <div className="sidebar-install-banner">
           <div className="sidebar-install-text">
-            <strong>Install Pyonair</strong>
-            <span>Get the app for quick access</span>
+            <strong>Add to home screen</strong>
+            <span>Quick access to your Pyonair web portal</span>
           </div>
-          <button className="sidebar-install-btn" onClick={handleInstall} type="button">Install</button>
+          <button className="sidebar-install-btn" onClick={handleAddShortcut} type="button">Add shortcut</button>
           <button className="sidebar-install-dismiss" onClick={dismissInstall} type="button">&times;</button>
         </div>
       )}
