@@ -59,33 +59,42 @@
   align-items: flex-end;
   gap: 8px;
   background: var(--surface-input);
-  border: 1px solid var(--border-default);
+  /* Clarity composer canon (baked from the live CSS override): 1px #E5E7EB at
+     rest, red only on focus-within (see below). This is the "premium" border —
+     calm neutral until the composer is active. NOTE (Jord-overridable): if Jord
+     picks the bold-always-red border instead, change this ONE line to
+     `border: 1px solid #E63946;`. */
+  border: 1px solid #E5E7EB;
   border-radius: var(--radius-lg);
-  padding: 6px 8px;
+  padding: 8px 10px;
   transition: border-color var(--transition-fast);
 }
 
-/* Compose-input consistency (Jord 2026-06-20): the 1:1 composer used to draw a
-   prominent Pyonair-red ring around the WHOLE box on focus (.chat-input-form is
-   the wrapper around textarea + mic/send), while the Team chat composer never
-   rings its wrapper — only its inner field shows a subtle border. Jord prefers
-   the Team chat's slicker, ring-less treatment and wants both to MATCH. So the
-   1:1 wrapper no longer turns red on focus; it keeps a calm neutral border like
-   the Team chat. (Send/mic stay red as action buttons — unchanged.) */
+/* Clarity composer canon (baked from live override): the whole composer box
+   picks up the Pyonair-red border on focus-within — subtle at rest (#E5E7EB),
+   premium red (#E63946) once the user is typing. This is the sign-off default;
+   if Jord chooses the bold-always-red border, the at-rest line above changes and
+   this focus rule can stay as-is. */
 .chat-input-form:focus-within {
-  border-color: var(--border-default);
+  border-color: #E63946;
 }
 
+/* Attach (paperclip) — Team-AI outlined style: 42px square, soft rounded, light
+   surface with a hairline border; slate-grey icon (#64748B) so the RED mic is the
+   only coloured control at rest. Baked from the Clarity-approved live override. */
 .chat-upload-btn {
-  width: 32px;
-  height: 32px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  color: var(--text-tertiary);
-  border-radius: var(--radius-sm);
+  color: #64748B;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
   flex-shrink: 0;
+  transition: all var(--transition-fast);
 }
 
 .chat-upload-btn:hover {
@@ -106,29 +115,43 @@
   width: 100%;
   border: none;
   background: transparent;
-  padding: 6px 4px;
+  /* Clarity composer canon: 9px 10px padding + 30px min-height so the field
+     lines up with the 42px mic/attach/send controls. */
+  padding: 9px 10px;
   /* Item H (Clarity, FINAL): 16px composer text. 16px is also the iOS threshold
      below which Safari auto-zooms on focus — keeping it at 16px blocks that
      focus-zoom jump on her phone. */
   font-size: 16px;
   line-height: 1.4;
   resize: none;
-  min-height: 22px;
+  min-height: 30px;
   max-height: 150px;
   outline: none;
 }
 
+/* Send — Team-AI text button (baked from the Clarity live override): auto width
+   with a "Send" label rather than an arrow glyph. Empty/disabled reads as a calm
+   grey chip (#E2E8F0 / #64748B); the moment there's text it goes Pyonair-red. */
 .chat-send-btn {
-  width: 40px;
-  height: 40px;
+  width: auto;
+  height: 42px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  background: #E63946;
-  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748B;
+  background: #E2E8F0;
+  border-radius: 8px;
   flex-shrink: 0;
   transition: all var(--transition-fast);
+}
+
+.chat-send-btn:not(:disabled) {
+  color: #ffffff;
+  background: #E63946;
+  cursor: pointer;
 }
 
 .chat-send-btn:hover:not(:disabled) {
@@ -136,32 +159,42 @@
 }
 
 .chat-send-btn:disabled {
-  opacity: 0.3;
   cursor: not-allowed;
 }
 
-/* Mic button — launchpad style (red circle) */
+/* Mic — Team-AI outlined style (baked from Clarity live override): 42px square,
+   soft rounded, light surface with a hairline border, RED icon (#E63946) so it
+   reads as the primary/only coloured control at rest. On press it flips to the
+   filled-red recording state below. */
 .chat-mic-btn {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  background: #E63946;
-  border-radius: var(--radius-full);
+  color: #E63946;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
   flex-shrink: 0;
   transition: all var(--transition-fast);
 }
 
 .chat-mic-btn:hover {
-  background: #d32f3b;
+  background: var(--bg-hover);
 }
 
+/* Active recording: filled Pyonair-red with a white icon + pulsing ring. */
 .chat-mic-active {
-  background: #b71c1c !important;
+  color: #ffffff;
+  background: #E63946;
+  border-color: #E63946;
   box-shadow: 0 0 0 4px rgba(230, 57, 70, 0.3);
   animation: mic-pulse 1.2s ease-in-out infinite;
+}
+
+.chat-mic-active:hover {
+  background: #d32f3b;
 }
 
 @keyframes mic-pulse {

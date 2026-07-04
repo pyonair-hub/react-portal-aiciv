@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type FormEvent, type KeyboardEvent } from 'react'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition'
+import { useIsMobile } from '../../hooks/useMediaQuery'
 import { apiGet } from '../../api/client'
 import './ChatInput.css'
 
@@ -26,6 +27,11 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const quickfirePills = useSettingsStore(s => s.quickfirePills)
+  // Clarity's canonical mobile-placeholder fix: on ≤768px pass the SHORT string
+  // ('Type a message...') so it doesn't overflow the narrow composer, while
+  // desktop keeps the full hint ('...(/ for commands)'). Same 768px breakpoint
+  // the rest of the portal's mobile styles use (useIsMobile → max-width:768px).
+  const isMobile = useIsMobile()
   const { isListening, isTranscribing, isSupported, transcript, error: micError, start, stop } = useSpeechRecognition()
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -330,8 +336,24 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
             </button>
           </div>
         ) : (
-          /* Normal input mode */
+          /* Normal input mode — DOM order: mic · attach · textarea · send
+             (matches the Team-AI composer Clarity signed off). */
           <>
+            {isSupported && (
+              <button
+                type="button"
+                className={`chat-mic-btn ${isListening ? 'chat-mic-active' : ''}`}
+                onClick={toggleMic}
+                title="Voice input"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+            )}
             <button
               type="button"
               className="chat-upload-btn"
@@ -368,7 +390,7 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
               <textarea
                 ref={textareaRef}
                 className="chat-textarea"
-                placeholder={isTranscribing ? 'Transcribing your voice…' : 'Type a message... (/ for commands)'}
+                placeholder={isTranscribing ? 'Transcribing your voice…' : (isMobile ? 'Type a message...' : 'Type a message... (/ for commands)')}
                 value={text}
                 onChange={e => setText(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -388,29 +410,12 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
                 aria-busy={sending}
               />
             </div>
-            {isSupported && (
-              <button
-                type="button"
-                className={`chat-mic-btn ${isListening ? 'chat-mic-active' : ''}`}
-                onClick={toggleMic}
-                title="Voice input"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-              </button>
-            )}
             <button
               type="submit"
               className="chat-send-btn"
               disabled={!text.trim() || sending}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-              </svg>
+              Send
             </button>
           </>
         )}
