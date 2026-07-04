@@ -199,9 +199,9 @@ async function retryFetch<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> 
 export const useTriadStore = create<TriadState>((set, get) => ({
   // Agent status with lastSeenAt tracking
   agents: [
-    { id: 'acg', name: 'ACG', model: 'Claude Opus', status: 'online' as const, currentTask: 'Orchestrating triad', contextPct: 0, color: '#6c5ce7', lastSeenAt: Date.now() },
+    { id: 'acg', name: 'ACG', model: 'Claude Opus', status: 'online' as const, currentTask: 'Orchestrating triad', contextPct: 0, color: '#64748B', lastSeenAt: Date.now() },
     { id: 'proof', name: 'Proof', model: 'Claude on M2.7', status: 'online' as const, currentTask: 'Red-teaming', contextPct: 0, color: '#00b894', lastSeenAt: Date.now() },
-    { id: 'discovers', name: 'Discovers', model: 'Qwen 3.5 Cloud', status: 'online' as const, currentTask: 'Building', contextPct: 0, color: '#a29bfe', lastSeenAt: Date.now() },
+    { id: 'discovers', name: 'Discovers', model: 'Qwen 3.5 Cloud', status: 'online' as const, currentTask: 'Building', contextPct: 0, color: '#14B8A6', lastSeenAt: Date.now() },
   ],
   messages: loadCachedMessages(),
   priorities: [],

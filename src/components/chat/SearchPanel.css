@@ -25,6 +25,9 @@
 .search-icon {
   font-size: 14px;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-tertiary); /* SVG magnifier inherits this via currentColor */
 }
 
 .search-input {

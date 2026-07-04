@@ -10,36 +10,36 @@ import './OrgChartView.css'
 /* ── Constants ──────────────────────────────────────────── */
 
 const DEPARTMENT_COLORS: Record<string, string> = {
-  'Pure Technology': '#f1420b',
-  'Systems & Technology': '#2a93c1',
-  'Product Development': '#8b5cf6',
+  'Pure Technology': '#E63946',
+  'Systems & Technology': '#14B8A6',
+  'Product Development': '#64748B',
   'Sales & Distribution': '#f59e0b',
-  'Marketing & Advertising': '#f1420b',
-  'Pure Marketing Group': '#e85d04',
-  'Commercial & Business Development': '#06b6d4',
+  'Marketing & Advertising': '#E63946',
+  'Pure Marketing Group': '#F59E0B',
+  'Commercial & Business Development': '#14B8A6',
   'Operations & Planning': '#22c55e',
-  'Human Resources': '#ec4899',
+  'Human Resources': '#E63946',
   'Accounting & Finance': '#84cc16',
   'Pure Capital': '#fbbf24',
   'Pure Research': '#a78bfa',
-  'Legal & Compliance': '#6366f1',
-  'Pure Infrastructure': '#f97316',
+  'Legal & Compliance': '#64748B',
+  'Pure Infrastructure': '#F59E0B',
   'Pure Digital Assets': '#60a5fa',
   'Pure Love': '#f472b6',
   'Board of Advisors': '#c084fc',
   'Karma': '#34d399',
   'Meta & Governance': '#818cf8',
-  'AI Strategy': '#06b6d4',
+  'AI Strategy': '#14B8A6',
   'IT Support': '#94a3b8',
   'Customer Support': '#fb923c',
   'Other': '#9ca3af',
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active: '#22c55e',
-  working: '#3b82f6',
-  idle: '#f59e0b',
-  offline: '#6b7280',
+  active: '#22C55E',   /* --py-online */
+  working: '#14B8A6',  /* brand teal (was off-brand blue #3b82f6) */
+  idle: '#F59E0B',     /* --py-amber */
+  offline: '#64748B',  /* --py-slate */
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -116,7 +116,7 @@ const OrgNode = React.memo(function OrgNode({
         className={`oct-avatar oct-avatar--${tier}`}
         style={
           isPrimary
-            ? { background: 'linear-gradient(135deg, #3b82f6, #f97316)' }
+            ? { background: 'linear-gradient(135deg, #E63946, #F59E0B)' }
             : { background: `${deptColor}22`, borderColor: `${deptColor}44` }
         }
       >
@@ -528,14 +528,14 @@ export default function OrgChartView() {
                 agent={primaryAgent}
                 tier="primary"
                 badge="Primary"
-                badgeColor="#f1420b"
-                deptColor="#f1420b"
+                badgeColor="#E63946"
+                deptColor="#E63946"
                 onClick={primaryDept && primaryDept.members.length > 0 ? () => toggleDept(PRIMARY_DEPT) : undefined}
                 expandHint={primaryDept && primaryDept.members.length > 0 ? (expandedDepts.has(PRIMARY_DEPT) ? 'up' : 'down') : null}
                 agentCount={primaryDept?.members.length}
               />
               {expandedDepts.has(PRIMARY_DEPT) && primaryDept && primaryDept.members.length > 0 && (
-                <AgentList members={primaryDept.members} deptColor="#f1420b" />
+                <AgentList members={primaryDept.members} deptColor="#E63946" />
               )}
             </div>
           )}
@@ -554,8 +554,8 @@ export default function OrgChartView() {
                     agent={ctoAgent}
                     tier="l2"
                     badge="CTO"
-                    badgeColor="#2a93c1"
-                    deptColor="#2a93c1"
+                    badgeColor="#14B8A6"
+                    deptColor="#14B8A6"
                   />
                 </div>
               )}
@@ -566,8 +566,8 @@ export default function OrgChartView() {
                     agent={cmoAgent}
                     tier="l2"
                     badge="CMO"
-                    badgeColor="#e85d04"
-                    deptColor="#e85d04"
+                    badgeColor="#F59E0B"
+                    deptColor="#F59E0B"
                   />
                 </div>
               )}

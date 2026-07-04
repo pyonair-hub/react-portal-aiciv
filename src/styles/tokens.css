@@ -2,8 +2,8 @@
 :root,
 [data-theme="dark"],
 [data-theme="light"] {
-  /* Background — clean white */
-  --bg-primary: #f5f5f8;
+  /* Background — match team-chat's chat area (#F8F9FA) for one consistent feel */
+  --bg-primary: #F8F9FA;
   --bg-secondary: #ffffff;
   --bg-tertiary: #eeeef2;
   --bg-elevated: #ffffff;
@@ -34,21 +34,26 @@
   --accent-secondary: #E63946;
   --accent-secondary-bg: rgba(230, 57, 70, 0.06);
 
-  /* Status */
-  --status-success: #00a884;
-  --status-success-bg: rgba(0, 168, 132, 0.08);
-  --status-warning: #e6a800;
-  --status-warning-bg: rgba(230, 168, 0, 0.08);
-  --status-error: #e74c3c;
-  --status-error-bg: rgba(231, 76, 60, 0.08);
-  --status-info: #3498db;
-  --status-info-bg: rgba(52, 152, 219, 0.08);
+  /* Status — Pyonair brand palette only (design-tokens.css) */
+  --status-success: #059669;
+  --status-success-bg: rgba(5, 150, 105, 0.08);
+  --status-warning: #F59E0B;
+  --status-warning-bg: rgba(245, 158, 11, 0.08);
+  --status-error: #E63946;
+  --status-error-bg: rgba(230, 57, 70, 0.08);
+  --status-info: #64748B;
+  --status-info-bg: rgba(100, 116, 139, 0.08);
+  /* Live presence (heartbeat dot) */
+  --py-online: #22C55E;
+  --py-offline: #9AA1AB;
 
   /* Chat */
   --chat-user-bg: #E63946;
   --chat-user-text: #ffffff;
-  --chat-assistant-bg: #f5f5f8;
-  --chat-assistant-text: #1a1a2e;
+  /* WHITE assistant bubble w/ light border = team-chat's bubble (was grey
+     #f5f5f8, which read as a different style). */
+  --chat-assistant-bg: #ffffff;
+  --chat-assistant-text: #1D1D1F;
 
   /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -64,16 +69,17 @@
 
   /* Spacing */
   --sidebar-width: 260px;
-  --header-height: 56px;
+  --header-height: 76px;
   --mobile-nav-height: 60px;
 
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
 
-  /* Fonts */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: 'Oswald', sans-serif;
+  /* Fonts — DM Sans is the Pyonair type system (design-tokens.css) */
+  /* Inter to match team-chat (Jord: "same look and feel"). */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Gradients — Pioneer red based */

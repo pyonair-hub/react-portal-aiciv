@@ -91,8 +91,16 @@ export function ChatView() {
               if (showSearch) setSearchQuery('')
             }}
             title="Search messages"
+            aria-label="Search messages"
           >
-            {'\u{1F50D}'}
+            {/* On-brand SVG magnifier (was the off-brand 🔍 emoji glyph, which
+                rendered as a different style/color per-OS). Inherits currentColor
+                so the CSS controls brand color: slate default, red on active. */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
           </button>
         </div>
         {showSearch && (

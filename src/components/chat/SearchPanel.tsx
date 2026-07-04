@@ -39,7 +39,16 @@ export function SearchPanel({ onSearch, matchCount, onClose }: SearchPanelProps)
   return (
     <div className="search-panel">
       <div className="search-input-wrap">
-        <span className="search-icon">{'\u{1F50D}'}</span>
+        <span className="search-icon" aria-hidden="true">
+          {/* On-brand SVG magnifier (matches the header toggle in ChatView). Was the
+              off-brand 🔍 emoji glyph, which rendered a different style/color per-OS.
+              Inherits currentColor so CSS controls the brand color. */}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </span>
         <input
           ref={inputRef}
           className="search-input"

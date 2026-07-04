@@ -39,7 +39,7 @@
 
 .witness-status--running { color: #22c55e; }
 .witness-status--stopped { color: #ef4444; }
-.witness-status--exited  { color: #f97316; }
+.witness-status--exited  { color: #F59E0B; }
 
 .witness-health--healthy   { color: #22c55e; }
 .witness-health--unhealthy { color: #ef4444; }
@@ -81,8 +81,8 @@
 }
 
 .witness-alert--critical { border-left: 4px solid #ef4444; }
-.witness-alert--warning  { border-left: 4px solid #f97316; }
-.witness-alert--info     { border-left: 4px solid #3b82f6; }
+.witness-alert--warning  { border-left: 4px solid #F59E0B; }
+.witness-alert--info     { border-left: 4px solid #64748B; }
 .witness-alert--acked    { opacity: 0.5; }
 
 .witness-alert__header {

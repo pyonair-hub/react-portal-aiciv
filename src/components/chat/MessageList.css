@@ -1,3 +1,13 @@
+/* Wrapper is the flex child of .chat-view; it's positioned so the floating
+   "jump to latest" button can anchor to the bottom-right of the message area. */
+.msg-list-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
 .msg-list {
   flex: 1;
   /* min-height:0 lets this flex item shrink below its content size so it
@@ -12,10 +22,60 @@
   padding: 16px;
 }
 
+/* Floating "jump to latest" FAB — appears when scrolled up. Jord never saw the
+   old subtle white-circle version, so this is a SOLID red FAB with a white
+   chevron, strong shadow, and a >=44px tap target (48px). High contrast so it
+   reads as an obvious button on a light message list. */
+.msg-jump-latest {
+  position: absolute;
+  right: 16px;
+  bottom: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #E63946;          /* solid brand red — obvious, not a faint outline */
+  color: #ffffff;               /* white chevron for max contrast */
+  border: 2px solid #ffffff;    /* white ring lifts it off the message list */
+  box-shadow: 0 6px 18px rgba(230, 57, 70, 0.45), 0 2px 6px rgba(15, 23, 42, 0.25);
+  cursor: pointer;
+  z-index: 20;
+  -webkit-tap-highlight-color: transparent;
+  animation: jumpFabIn 0.18s ease-out;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+@keyframes jumpFabIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.85); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.msg-jump-latest:hover,
+.msg-jump-latest:active {
+  background: #d32f3b;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(230, 57, 70, 0.55), 0 2px 6px rgba(15, 23, 42, 0.3);
+}
+
+.msg-jump-latest svg { display: block; width: 24px; height: 24px; }
+
+/* Bigger + lifted above the mobile bottom nav so the thumb can reach it. */
+@media (max-width: 768px) {
+  .msg-jump-latest {
+    width: 52px;
+    height: 52px;
+    right: 14px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .msg-jump-latest svg { width: 26px; height: 26px; }
+}
+
 .msg-list-inner {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;            /* match team-chat's 12px message spacing */
   max-width: 900px;
   margin: 0 auto;
 }

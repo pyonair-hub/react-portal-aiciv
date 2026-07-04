@@ -75,6 +75,9 @@ export function Sidebar() {
     localStorage.getItem('install-banner-dismissed') === 'true'
   )
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+  // Inline how-to panel for browsers that don't fire beforeinstallprompt
+  // (iOS Safari always; some others) — replaces the old confusing alert().
+  const [showHowTo, setShowHowTo] = useState(false)
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -82,28 +85,54 @@ export function Sidebar() {
       setDeferredPrompt(e)
     }
     window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    // If it installs successfully, stop nagging.
+    const onInstalled = () => dismissInstall()
+    window.addEventListener('appinstalled', onInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
   }, [])
 
+  // The "app" is a PWA: a home-screen install of the live portal (always the
+  // latest, identical to web — by design). On Android Chrome / Samsung Internet
+  // beforeinstallprompt fires and this triggers the NATIVE install dialog. On
+  // browsers that never fire it (iOS Safari), we show an inline step-by-step
+  // instead of a bare alert.
+  // Browser-aware (mirrors MobileInstallBanner). Firefox FIRST (its menu has no
+  // "Add page to"); then iOS Safari (excl. Chrome/Edge on iOS); Samsung;
+  // Chrome/Edge Android; generic fallback. PWA wording varies by browser.
+  const platformHelp = (() => {
+    const ua = navigator.userAgent
+    const isIOS = /iPad|iPhone|iPod/.test(ua)
+    if (/Firefox\/|FxiOS/.test(ua)) {
+      return { os: 'firefox', steps: ['Tap the ⋮ menu (three dots).', 'Tap "Install" (or "Add to Home screen") — it\'s near the top of the menu, not under Add-ons.', 'Confirm — the Pyonair app appears on your home screen.'] }
+    }
+    if (isIOS && !/CriOS|EdgiOS/.test(ua)) {
+      return { os: 'ios', steps: ['Tap the Share icon (a square with an up-arrow) at the bottom of Safari.', 'Scroll down and tap "Add to Home Screen".', 'Tap "Add" — the Pyonair app appears on your home screen.'] }
+    }
+    if (/SamsungBrowser/.test(ua)) {
+      return { os: 'samsung', steps: ['Tap the menu (three lines) at the bottom-right of Samsung Internet.', 'Tap "Add page to" then "Home screen" (or "Install").', 'Confirm — the Pyonair app appears on your home screen.'] }
+    }
+    if (/Chrome|CriOS|Edg/i.test(ua)) {
+      return { os: 'chromium', steps: ['Tap the ⋮ menu (top-right).', 'Tap "Add to Home screen" or "Install app".', 'Tap "Install" — the Pyonair app appears on your home screen.'] }
+    }
+    return { os: 'other', steps: ['Open your browser menu (look for ⋮ or three lines).', 'Look for "Install", "Add to Home screen", or "Add page to" — wording varies by browser.', 'Confirm — the Pyonair app appears on your home screen.'] }
+  })()
+
   const handleAddShortcut = async () => {
-    // This is a responsive web portal (not a packaged app). The native
-    // beforeinstallprompt, when available, only adds a home-screen SHORTCUT to
-    // the web portal — so we use honest "add to home screen" language rather
-    // than claiming "Install App".
+    // Preferred path: the browser supports native PWA install (Android Chrome,
+    // Samsung Internet when criteria met). Fire the REAL install dialog.
     if (deferredPrompt) {
       deferredPrompt.prompt()
       const result = await deferredPrompt.userChoice
       setDeferredPrompt(null)
       if (result.outcome === 'accepted') dismissInstall()
-    } else {
-      // Fallback: guide the user to add a home-screen shortcut.
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-      if (isIOS) {
-        alert('To add a shortcut: tap the Share button in Safari, then "Add to Home Screen".')
-      } else {
-        alert('To add a shortcut: open the browser menu (three dots) and select "Add to Home Screen".')
-      }
+      return
     }
+    // Fallback: no native prompt available → show the inline how-to panel
+    // (NOT a confusing alert popup).
+    setShowHowTo(v => !v)
   }
 
   const dismissInstall = () => {
@@ -151,11 +180,22 @@ export function Sidebar() {
       {!installDismissed && (
         <div className="sidebar-install-banner">
           <div className="sidebar-install-text">
-            <strong>Add to home screen</strong>
-            <span>Quick access to your Pyonair web portal</span>
+            <strong>Install the Pyonair app</strong>
+            <span>Your portal on your home screen — always up to date, just like the web.</span>
           </div>
-          <button className="sidebar-install-btn" onClick={handleAddShortcut} type="button">Add shortcut</button>
-          <button className="sidebar-install-dismiss" onClick={dismissInstall} type="button">&times;</button>
+          <button className="sidebar-install-btn" onClick={handleAddShortcut} type="button">
+            {deferredPrompt ? 'Install Pyonair' : 'How to install'}
+          </button>
+          <button className="sidebar-install-dismiss" onClick={dismissInstall} type="button" aria-label="Dismiss">&times;</button>
+          {showHowTo && (
+            <div className="sidebar-install-howto">
+              <div className="sidebar-install-howto-title">Add Pyonair to your home screen</div>
+              <ol>
+                {platformHelp.steps.map((s, i) => <li key={i}>{s}</li>)}
+              </ol>
+              <button className="sidebar-install-howto-done" onClick={() => setShowHowTo(false)} type="button">Got it</button>
+            </div>
+          )}
         </div>
       )}
       <div className="sidebar-footer">

@@ -12,13 +12,13 @@ import './DocsView.css'
 const VISIBILITY_OPTIONS = ['public', 'private', 'civ-only']
 const TAG_COLORS = [
   'var(--accent-primary)',
-  'var(--accent-secondary, #8b5cf6)',
+  'var(--accent-secondary, #14B8A6)',
   'var(--accent-success, #10b981)',
   'var(--accent-warning, #f59e0b)',
   'var(--accent-error, #ef4444)',
-  '#06b6d4',
-  '#ec4899',
-  '#6366f1',
+  '#14B8A6',
+  '#E63946',
+  '#64748B',
 ]
 
 function tagColor(tag: string): string {

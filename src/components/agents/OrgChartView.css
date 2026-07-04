@@ -512,13 +512,13 @@
   min-height: 130px;
   padding: 18px 14px 12px;
   border-width: 2px;
-  border-color: #f1420b44;
+  border-color: #E6394644;
   background: var(--bg-elevated);
 }
 
 .oct-node--primary:hover {
-  border-color: #f1420b88;
-  box-shadow: 0 4px 20px rgba(241, 66, 11, 0.15);
+  border-color: #E6394688;
+  box-shadow: 0 4px 20px rgba(230, 57, 70, 0.15);
 }
 
 .oct-node--l2 {
@@ -561,7 +561,7 @@
 .oct-avatar--primary {
   width: 52px;
   height: 52px;
-  box-shadow: 0 2px 12px rgba(241, 66, 11, 0.3);
+  box-shadow: 0 2px 12px rgba(230, 57, 70, 0.3);
 }
 
 .oct-avatar--l2 {

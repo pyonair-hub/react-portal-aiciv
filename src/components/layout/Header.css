@@ -2,8 +2,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* 3rd pass (Jord still wanted it BIGGER + more LEFT): --header-height now
+     76px, logo 68px, and padding-left 2px so the wordmark sits at the very
+     left edge. */
   height: var(--header-height);
-  padding: 0 20px;
+  padding: 0 16px 0 2px;
   background: var(--bg-secondary);
   border-bottom: 2px solid transparent;
   border-image: var(--gradient-brand) 1;
@@ -27,8 +30,17 @@
 }
 
 .header-logo {
-  height: 22px;
+  /* Pyonair wordmark — now the TIGHTLY-CROPPED asset (292x90, content flush).
+     The previous -light.png was a 1200x300 frame with the mark stranded in the
+     centre 23% → at width:auto it rendered ~272px wide with empty space on the
+     left (Jord: "logo missing / empty space" on mobile). With the cropped asset
+     the mark fills the box. Sized to the Clarity-approved live value: 36px on
+     desktop (28px mobile below). Height-only change keeps the 3.24:1 aspect
+     ratio (width:auto scales it, never squished). */
+  height: 36px;
   width: auto;
+  object-fit: contain;
+  object-position: left center;
   display: block;
 }
 
@@ -43,6 +55,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* "Live View" label — subtle, sits before the heartbeat ring + status badge. */
+.header-live-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 /* ── Mini ring context indicator ──────────────────────── */
@@ -72,6 +93,12 @@
 
 @media (max-width: 768px) {
   .header {
-    padding: 0 12px;
+    padding: 0 10px 0 2px;
+  }
+  .header-logo {
+    /* Cropped asset (3.24:1) flush-left on phones. Clarity-approved live value:
+       28px on mobile. Height-only → aspect ratio preserved (~91px wide at 28px
+       tall), no squish, no empty side-margin. */
+    height: 28px;
   }
 }

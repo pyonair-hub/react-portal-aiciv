@@ -15,9 +15,15 @@
 
 .chat-pills {
   display: flex;
+  /* Clarity-approved live value: the suggestion chips row scrolls horizontally
+     instead of clipping. nowrap keeps them on one line; overflow-x:auto +
+     -webkit-overflow-scrolling:touch give momentum scroll on iOS; padding-right
+     leaves room so the last chip isn't flush against the edge. */
+  flex-wrap: nowrap;
   gap: 6px;
-  padding: 0 0 8px;
+  padding: 0 12px 8px 0;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 
@@ -59,8 +65,15 @@
   transition: border-color var(--transition-fast);
 }
 
+/* Compose-input consistency (Jord 2026-06-20): the 1:1 composer used to draw a
+   prominent Pyonair-red ring around the WHOLE box on focus (.chat-input-form is
+   the wrapper around textarea + mic/send), while the Team chat composer never
+   rings its wrapper — only its inner field shows a subtle border. Jord prefers
+   the Team chat's slicker, ring-less treatment and wants both to MATCH. So the
+   1:1 wrapper no longer turns red on focus; it keeps a calm neutral border like
+   the Team chat. (Send/mic stay red as action buttons — unchanged.) */
 .chat-input-form:focus-within {
-  border-color: var(--accent-primary);
+  border-color: var(--border-default);
 }
 
 .chat-upload-btn {
@@ -81,7 +94,11 @@
 }
 
 .chat-textarea-wrap {
-  flex: 1;
+  /* flex:1 1 auto + min-width:0 (spec §5, MANDATORY): without min-width:0 the
+     textarea refuses to shrink below its content and pushes Send off-canvas at
+     375 (the composer-overflow bug). Send/mic stay flex:0 0 auto. */
+  flex: 1 1 auto;
+  min-width: 0;
   position: relative;
 }
 
@@ -90,10 +107,13 @@
   border: none;
   background: transparent;
   padding: 6px 4px;
-  font-size: 14px;
+  /* Item H (Clarity, FINAL): 16px composer text. 16px is also the iOS threshold
+     below which Safari auto-zooms on focus — keeping it at 16px blocks that
+     focus-zoom jump on her phone. */
+  font-size: 16px;
   line-height: 1.4;
   resize: none;
-  min-height: 20px;
+  min-height: 22px;
   max-height: 150px;
   outline: none;
 }

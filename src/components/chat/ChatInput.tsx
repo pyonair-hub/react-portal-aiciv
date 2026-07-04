@@ -26,7 +26,7 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const quickfirePills = useSettingsStore(s => s.quickfirePills)
-  const { isListening, isSupported, transcript, error: micError, start, stop } = useSpeechRecognition()
+  const { isListening, isTranscribing, isSupported, transcript, error: micError, start, stop } = useSpeechRecognition()
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -77,12 +77,14 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
     wasSending.current = sending
   }, [sending])
 
-  // Sync speech transcript into text field — always, even after stop
-  useEffect(() => {
-    if (transcript) {
-      setText(transcript)
-    }
-  }, [transcript])
+  // LIVE-STREAMING mic (matches team-chat): the `transcript` grows word-by-word
+  // WHILE recording and is shown live in the recording bar's preview (NOT pushed
+  // into the textarea on every interim — that focus/dispatch thrash on every
+  // result was janky on mobile and made it feel like the OLD mic). We keep the
+  // latest transcript in a ref so the stop/send handlers read the final words
+  // directly, then CLEAR — so nothing "sticks in the box".
+  const liveTranscriptRef = useRef('')
+  liveTranscriptRef.current = transcript
 
   // Recording timer
   useEffect(() => {
@@ -181,8 +183,22 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
 
   const toggleMic = () => {
     if (isListening) {
+      // Stop and review: drop the live transcript into the textarea so she can
+      // edit before sending. Read the ref (latest words), not stale state.
       stop()
-      // Text is already synced via transcript effect — user can review and send
+      const words = liveTranscriptRef.current.trim()
+      if (words) {
+        setText(words)
+        requestAnimationFrame(() => {
+          const el = textareaRef.current
+          if (el) {
+            el.focus()
+            try { el.setSelectionRange(words.length, words.length) } catch { /* noop */ }
+            el.style.height = 'auto'
+            el.style.height = Math.min(el.scrollHeight, 150) + 'px'
+          }
+        })
+      }
     } else {
       setText('')
       start()
@@ -190,15 +206,15 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
   }
 
   const stopAndSend = () => {
+    // Live streaming: the transcript is already complete in the ref by the time
+    // she taps send. Stop, send it directly, and CLEAR — nothing sticks.
     stop()
-    // Small delay to let final transcript sync, use ref for latest text
-    setTimeout(() => {
-      const trimmed = textRef.current.trim()
-      if (trimmed) {
-        onSend(trimmed)
-        setText('')
-      }
-    }, 300)
+    const words = (liveTranscriptRef.current || textRef.current).trim()
+    if (words && !sending) {
+      onSend(words)
+    }
+    setText('')
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }
 
   const cancelRecording = () => {
@@ -288,7 +304,9 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
               <span className="chat-recording-time">{formatTime(recordingSeconds)}</span>
             </div>
             <div className="chat-recording-transcript">
-              {transcript || 'Listening...'}
+              {transcript
+                ? transcript
+                : (isTranscribing ? 'Listening…' : 'Recording… tap ■ when done')}
             </div>
             <button
               type="button"
@@ -350,7 +368,7 @@ export function ChatInput({ onSend, onUpload, sending }: ChatInputProps) {
               <textarea
                 ref={textareaRef}
                 className="chat-textarea"
-                placeholder="Type a message... (/ for commands)"
+                placeholder={isTranscribing ? 'Transcribing your voice…' : 'Type a message... (/ for commands)'}
                 value={text}
                 onChange={e => setText(e.target.value)}
                 onKeyDown={handleKeyDown}

@@ -39,14 +39,14 @@ export interface ActivityEvent {
 }
 
 export const TRIAD_AGENTS: Record<TriadMember, Omit<TriadAgent, 'status' | 'currentTask' | 'contextPct'>> = {
-  acg: { id: 'acg', name: 'ACG', model: 'Claude Opus', color: '#6c5ce7' },
+  acg: { id: 'acg', name: 'ACG', model: 'Claude Opus', color: '#64748B' },
   proof: { id: 'proof', name: 'Proof', model: 'Claude on M2.7', color: '#00b894' },
-  discovers: { id: 'discovers', name: 'Discovers', model: 'Qwen 3.5 Cloud', color: '#a29bfe' },
+  discovers: { id: 'discovers', name: 'Discovers', model: 'Qwen 3.5 Cloud', color: '#14B8A6' },
 }
 
 export const SENDER_COLORS: Record<string, string> = {
-  acg: '#6c5ce7',
+  acg: '#64748B',
   proof: '#00b894',
-  discovers: '#a29bfe',
+  discovers: '#14B8A6',
   corey: '#fdcb6e',
 }

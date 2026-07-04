@@ -12,7 +12,18 @@ import { SettingsView } from './components/settings/SettingsView'
 import { TerminalView } from './components/terminal/TerminalView'
 import { ConsoleView } from './components/console/ConsoleView'
 import { TeamsView } from './components/teams/TeamsView'
-const TeamChatView = () => <iframe src={`${window.location.origin}/team-chat`} className="teamchat-iframe" />
+// Pass the portal auth token + embed flag into the team-chat iframe. The
+// embedded team-chat.html needs a token for its /api/team-chat/* + WS calls;
+// without it every call 401s and the chat hangs blank (the 2026-06-18 "stuck
+// team chat" bug). We pass it explicitly via ?token so it never depends on
+// localStorage key/timing. (team-chat.html also falls back to reading this key
+// itself, belt-and-suspenders.)
+// The team-chat iframe is now rendered PERSISTENTLY in AppShell (mounted once,
+// shown/hidden by route) so it doesn't reload/reconnect every time the user
+// re-enters /teamchat (2026-06-18 "re-triggers every entry" fix). This route
+// element is intentionally empty — AppShell shows the persistent iframe when
+// pathname === '/teamchat'.
+const TeamChatView = () => null
 import { BookmarksView } from './components/bookmarks/BookmarksView'
 import { StatusView } from './components/status/StatusView'
 import { ContextView } from './components/context/ContextView'

@@ -6,13 +6,24 @@
     <title>Pyonair</title>
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#ffffff" />
+    <!-- PWA app naming so the installed home-screen app is labeled "Pyonair"
+         (not the URL) and launches standalone — iOS reads these meta tags
+         (it ignores manifest.name); Android reads the manifest. -->
+    <meta name="application-name" content="Pyonair" />
+    <meta name="apple-mobile-web-app-title" content="Pyonair" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet" />
+    <!-- Inter to MATCH the team-chat surface (Jord: "same look and feel"). Team
+         chat uses Inter; direct chat used DM Sans → the #1 reason they "looked
+         different". -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>

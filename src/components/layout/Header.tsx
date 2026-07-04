@@ -11,10 +11,16 @@ interface ContextSnapshot {
   max_tokens: number
 }
 
-function ctxColor(pct: number): string {
-  if (pct < 50) return 'var(--status-success)'
-  if (pct < 75) return 'var(--status-warning)'
-  return 'var(--status-error)'
+// Header status/context ring = a context gauge ("how full is the AI's memory").
+// Clarity-signed-off LIVE value (baked into source here, superseding the earlier
+// green/amber/red gradient): the gauge arc is solid Pyonair brand red #E63946 at
+// all fill levels. The separate green "Active" presence dot (StatusBadge) is
+// UNTOUCHED — only the gauge ring is red. `pct` is retained in the signature so
+// the arc/text stay a single source of truth and future gradient work is a
+// one-line change here.
+const PYONAIR_RED = '#E63946'
+function ctxColor(_pct: number): string {
+  return PYONAIR_RED
 }
 
 /** Mini SVG ring for the header */
@@ -58,10 +64,21 @@ interface Branding {
 export function Header() {
   const { civName, status } = useIdentityStore()
   const [ctx, setCtx] = useState<ContextSnapshot | null>(null)
-  // Real Pyonair wordmark (red dot + "Pyonair") on transparent/white bg. The
-  // server now serves root dist/ where this asset actually exists, so the
-  // header shows the real logo instead of a broken-image / page-shell.
-  const [branding, setBranding] = useState<Branding>({ display_name: '', logo_url: '/pyonair-logo-light.png', platform: 'Pyonair' })
+  // Real Pyonair wordmark (red dot + "Pyonair"). NOTE: the original
+  // pyonair-logo-light.png is a 1200x300 frame whose actual mark occupies only
+  // the centre ~23% (x:462-738) with huge empty side-margins — so at a fixed
+  // header height with width:auto it rendered ~272px wide with the mark stranded
+  // in the middle and empty space on the left (Jord's "logo missing / empty
+  // space" on mobile). FIX: use the tightly-cropped asset (292x90, content
+  // flush) so the mark fills the header. We also IGNORE an API logo_url that
+  // points back at the un-cropped -light.png so the crop always wins.
+  // BASE_URL-prefixed so the cropped asset resolves correctly under EVERY
+  // build base: '/' (default → /pyonair-logo-cropped.png) and '/qa5/' (staging
+  // → /qa5/pyonair-logo-cropped.png). A bare '/pyonair-logo-cropped.png' under
+  // /qa5/ hit the SPA HTML fallback (404→index.html) → broken image, the exact
+  // "empty space" Jord saw.
+  const LOGO_CROPPED = `${import.meta.env.BASE_URL}pyonair-logo-cropped.png`.replace(/\/{2,}/g, '/')
+  const [branding, setBranding] = useState<Branding>({ display_name: '', logo_url: LOGO_CROPPED, platform: 'Pyonair' })
 
   const fetchCtx = useCallback(async () => {
     try {
@@ -80,7 +97,12 @@ export function Header() {
 
   useEffect(() => {
     apiGet<Branding>('/api/branding').then(b => {
-      setBranding(b)
+      // Keep the cropped logo if the API just hands back the un-cropped
+      // -light.png (it has the bad side-margins). Honour a genuinely different
+      // per-client logo_url.
+      const apiLogo = b.logo_url || ''
+      const logo_url = (!apiLogo || apiLogo.includes('pyonair-logo-light')) ? LOGO_CROPPED : apiLogo
+      setBranding({ ...b, logo_url })
       document.title = b.display_name || 'Pyonair'
     }).catch(() => {})
   }, [])
@@ -100,6 +122,11 @@ export function Header() {
         </div>
       </div>
       <div className="header-right">
+        {/* "Live View" label (Jord, minor/consistency): labels the live-status
+            cluster — the heartbeat ring + the Active/Offline presence badge.
+            BEST-CALL placement (flagged for Jord to confirm which element she
+            meant); low-priority, kept subtle so it doesn't crowd the header. */}
+        <span className="header-live-label">Live View</span>
         {ctx != null && (
           <Link to="/context" className="header-ctx-link" title="Context window — click for details">
             <CtxRing pct={ctx.pct} />

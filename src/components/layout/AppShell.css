@@ -1,7 +1,11 @@
 .app-shell {
   display: flex;
   flex-direction: column;
+  /* 100dvh (spec §5) so the chat composer stays above the mobile browser
+     address bar — 100vh under-counts on iOS/Android and pushes the input row
+     off-screen ("can't type" bug). vh fallback first for old browsers. */
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -27,16 +31,64 @@
   }
 }
 
-/* Team Chat iframe — fills available space */
-.teamchat-iframe {
-  width: 100%;
-  height: calc(100vh - var(--header-height, 56px));
-  border: none;
-  display: block;
+/* ── Direct (1:1) AI chat route — Team-Chat pinned-composer model ──────────
+   Ported from team-chat.html: the frame is fixed at 100dvh / overflow:hidden,
+   ONLY the message list scrolls, and the composer is pinned. app-main must NOT
+   be its own scroll container here (that's what let the input scroll away
+   under the mobile keyboard). The chat view + mobile-nav offset are handled
+   inside .chat-view, not by app-main padding, so the composer sits flush above
+   the bottom nav and stays reachable when the keyboard opens. */
+.app-main-chat {
+  overflow: hidden;
+  min-height: 0;
+  /* MUST be a column flex so the Outlet wrapper + .chat-view inside it are
+     HEIGHT-BOUNDED flex children. Without this, .chat-view's height:100%
+     resolved against an auto-height parent and .msg-list expanded to its FULL
+     content height (measured 43666px at 390px) → nothing to scroll inside it
+     while body is overflow:hidden → "I'm swiping and nothing moves" (Jord #1).*/
+  display: flex;
+  flex-direction: column;
+}
+
+/* The Outlet wrapper (.app-main-outlet) had NO layout rules, so it was an
+   auto-height box that broke the flex/height chain from .app-main-chat down to
+   .chat-view → .msg-list. On the chat route, make it a bounded flex child so
+   height passes through and the message list becomes the real scroll area. */
+.app-main-chat .app-main-outlet {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 768px) {
-  .teamchat-iframe {
-    height: calc(100vh - var(--header-height, 56px) - var(--mobile-nav-height, 60px));
+  .app-main-chat {
+    /* Composer reachability is owned by .chat-view's own bottom inset below —
+       app-main itself adds NO bottom padding (that pushed the input off-screen). */
+    padding-bottom: 0;
   }
+}
+
+/* Team-chat route: app-main itself must NOT scroll. It KEEPS the mobile bottom
+   padding so the iframe area ends ABOVE the MobileNav (the iframe fills the
+   padded box, so its pinned composer sits just above the nav — not under it). */
+.app-main-teamchat {
+  overflow: hidden;
+  min-height: 0;
+  /* Column flex so the teamchat-iframe (height:100%) fills the bounded box
+     instead of resolving against an auto-height parent. */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Team Chat iframe — fills its parent box exactly (no brittle vh math). On
+   desktop .app-main is flex:1 (app-shell 100dvh minus header). On mobile
+   .app-main keeps padding-bottom = mobile-nav, and the iframe fills the
+   content box above it. The iframe's inner page (body.embedded {height:100%})
+   then pins its OWN composer to the bottom of the visible box. */
+.teamchat-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
 }

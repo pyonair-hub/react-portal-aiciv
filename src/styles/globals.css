@@ -19,12 +19,20 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.5;
-  min-height: 100vh;
+  /* Lock the body to the VISUAL viewport (dvh), not the layout viewport. With
+     min-height:100vh the body can grow taller than the on-screen area when the
+     mobile keyboard opens, so the chat composer ends up below the fold and the
+     keyboard overlays the messages (Jord's "can't type / won't scroll" bug).
+     dvh tracks the keyboard-adjusted viewport; this mirrors team-chat.html. */
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
 #root {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 a {

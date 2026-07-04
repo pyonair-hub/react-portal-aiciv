@@ -10,6 +10,18 @@
   overflow: hidden;
 }
 
+/* Mobile: the bottom nav (MobileNav, --mobile-nav-height) overlaps the bottom
+   of the viewport. The chat surface must end ABOVE it so the pinned composer
+   is fully tappable (mic + send + textarea), matching team-chat.html where the
+   input bar is always reachable. We reserve the nav height as bottom padding
+   on the chat-view itself (not on app-main, which would re-introduce the
+   page-scroll/overlay bug) and add the iOS safe-area inset. */
+@media (max-width: 768px) {
+  .chat-view {
+    padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .chat-header-bar {
   display: flex;
   justify-content: flex-end;
@@ -18,11 +30,21 @@
 }
 
 .chat-search-toggle {
-  font-size: 16px;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  /* On-brand: slate (Slate 400/secondary) by default, brand red on hover/active.
+     The SVG inherits this via stroke:currentColor. */
   color: var(--text-tertiary);
   transition: all var(--transition-fast);
+}
+
+.chat-search-toggle svg {
+  display: block;
 }
 
 .chat-search-toggle:hover,

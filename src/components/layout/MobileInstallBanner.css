@@ -1,0 +1,129 @@
+/* Mobile-only install banner. Hidden on desktop (the sidebar banner covers
+   desktop). Pinned just above the bottom MobileNav so it's visible on every
+   route without opening the drawer. */
+.mobile-install-banner {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-install-banner {
+    display: block;
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    /* Sit ABOVE the chat compose input AND the bottom tab-bar (+ iOS safe area).
+       Clarity-approved live value: the previous +8px offset let the banner
+       overlap the compose field on mobile; +92px clears the composer + tab-bar. */
+    bottom: calc(var(--mobile-nav-height) + 92px + env(safe-area-inset-bottom, 0px));
+    z-index: 60;
+    /* Item I (Jord 06-20): make the install banner a DISTINCT color from the
+       white chrome so it reads as a deliberate "install the app" prompt — solid
+       brand red (#E63946) surface, white content. */
+    background: linear-gradient(135deg, #E63946 0%, #d32f3b 100%);
+    border: 1px solid #c42c38;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(230, 57, 70, 0.32);
+    overflow: hidden;
+    animation: mobileInstallIn 0.22s ease-out;
+  }
+
+  @keyframes mobileInstallIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .mobile-install-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .mobile-install-icon {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* white pill on the red banner */
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+  }
+  .mobile-install-icon svg { width: 20px; height: 20px; display: block; }
+
+  .mobile-install-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+  }
+  .mobile-install-text strong {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mobile-install-text span {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .mobile-install-btn {
+    flex-shrink: 0;
+    min-height: 36px;
+    padding: 0 16px;
+    border: none;
+    border-radius: 8px;
+    /* inverse: white button on the red banner so the CTA pops */
+    background: #fff;
+    color: #E63946;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-install-btn:active { background: #f1f1f1; }
+
+  .mobile-install-dismiss {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 50%;
+  }
+  .mobile-install-dismiss:active { background: rgba(255, 255, 255, 0.18); }
+
+  .mobile-install-howto {
+    padding: 0 14px 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+  }
+  .mobile-install-howto ol {
+    margin: 10px 0 8px;
+    padding-left: 20px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.92);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .mobile-install-howto-done {
+    border: none;
+    background: rgba(255, 255, 255, 0.92);
+    color: #E63946;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+}
